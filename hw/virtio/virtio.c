@@ -1015,43 +1015,87 @@ typedef struct VirtQueueElementOld {
     struct iovec out_sg[VIRTQUEUE_MAX_SIZE];
 } VirtQueueElementOld;
 
-void *qemu_get_virtqueue_element(VirtIODevice *vdev, QEMUFile *f, size_t sz)
+void *qemu_get_virtqueue_element(QEMUFile *f, size_t sz)
 {
     VirtQueueElement *elem;
-    VirtQueueElementOld data;
+    bool swap;
+    hwaddr addr[VIRTQUEUE_MAX_SIZE];
+    struct iovec iov[VIRTQUEUE_MAX_SIZE];
+    uint32_t index, out_num, in_num;
+    uint64_t scratch;
     int i;
 
-    qemu_get_buffer(f, (uint8_t *)&data, sizeof(VirtQueueElementOld));
+    qemu_get_be32s(f, &index);
+    qemu_get_be32s(f, &out_num);
+    qemu_get_be32s(f, &in_num);
+
+    /* Padding for pre-2.6 compatibility.  */
+    (void) qemu_get_be32(f);
+
+    /* Try to detect pre-2.6 format saved from a little-endian
+     * machine.  If saved on a big-endian machine, everything
+     * is already okay.
+     */
+    swap = (out_num & 0xFFFF0000) || (in_num & 0xFFFF0000);
+    if (swap) {
+        bswap32s(&index);
+        bswap32s(&out_num);
+        bswap32s(&in_num);
+    }
 
     /* TODO: teach all callers that this can fail, and return failure instead
      * of asserting here.
      * This is just one thing (there are probably more) that must be
      * fixed before we can allow NDEBUG compilation.
      */
-    assert(ARRAY_SIZE(data.in_addr) >= data.in_num);
-    assert(ARRAY_SIZE(data.out_addr) >= data.out_num);
+    assert(ARRAY_SIZE(elem->in_addr) >= in_num);
+    assert(ARRAY_SIZE(elem->out_addr) >= out_num);
 
-    elem = virtqueue_alloc_element(sz, data.out_num, data.in_num);
-    elem->index = data.index;
+    elem = virtqueue_alloc_element(sz, out_num, in_num);
+    elem->index = index;
 
     for (i = 0; i < elem->in_num; i++) {
-        elem->in_addr[i] = data.in_addr[i];
+        qemu_get_be64s(f, &elem->in_addr[i]);
+        if (swap) {
+            bswap64s(&elem->in_addr[i]);
+        }
+    }
+    if (i < VIRTQUEUE_MAX_SIZE) {
+        qemu_get_buffer(f, (uint8_t *)addr, sizeof(addr) - i * sizeof(addr[0]));
     }
 
     for (i = 0; i < elem->out_num; i++) {
-        elem->out_addr[i] = data.out_addr[i];
+        qemu_get_be64s(f, &elem->out_addr[i]);
+        if (swap) {
+            bswap64s(&elem->out_addr[i]);
+        }
+    }
+    if (i < VIRTQUEUE_MAX_SIZE) {
+        qemu_get_buffer(f, (uint8_t *)addr, sizeof(addr) - i * sizeof(addr[0]));
     }
 
     for (i = 0; i < elem->in_num; i++) {
-        /* Base is overwritten by virtqueue_map.  */
-        elem->in_sg[i].iov_base = 0;
-        elem->in_sg[i].iov_len = data.in_sg[i].iov_len;
+        (void) qemu_get_be64(f); /* base */
+	qemu_get_be64s(f, &scratch); /* length */
+        if (swap) {
+            bswap64s(&scratch);
+        }
+	elem->in_sg[i].iov_len = scratch;
+    }
+    if (i < VIRTQUEUE_MAX_SIZE) {
+        qemu_get_buffer(f, (uint8_t *)iov, sizeof(iov) - i * sizeof(iov[0]));
     }
 
     for (i = 0; i < elem->out_num; i++) {
-        /* Base is overwritten by virtqueue_map.  */
-        elem->out_sg[i].iov_base = 0;
-        elem->out_sg[i].iov_len = data.out_sg[i].iov_len;
+        (void) qemu_get_be64(f); /* base */
+        qemu_get_be64s(f, &scratch); /* length */
+        if (swap) {
+            bswap64s(&scratch);
+        }
+	elem->out_sg[i].iov_len = scratch;
+    }
+    if (i < VIRTQUEUE_MAX_SIZE) {
+        qemu_get_buffer(f, (uint8_t *)iov, sizeof(iov) - i * sizeof(iov[0]));
     }
 
     virtqueue_map(vdev, elem);
@@ -1060,33 +1104,41 @@ void *qemu_get_virtqueue_element(VirtIODevice *vdev, QEMUFile *f, size_t sz)
 
 void qemu_put_virtqueue_element(QEMUFile *f, VirtQueueElement *elem)
 {
-    VirtQueueElementOld data;
+    hwaddr addr[VIRTQUEUE_MAX_SIZE];
+    struct iovec iov[VIRTQUEUE_MAX_SIZE];
     int i;
 
-    memset(&data, 0, sizeof(data));
-    data.index = elem->index;
-    data.in_num = elem->in_num;
-    data.out_num = elem->out_num;
+    memset(addr, 0, sizeof(addr));
+    memset(iov, 0, sizeof(iov));
+
+    qemu_put_be32s(f, &elem->index);
+    qemu_put_be32s(f, &elem->out_num);
+    qemu_put_be32s(f, &elem->in_num);
+
+    /* Padding for pre-2.6 compatibility */
+    qemu_put_be32(f, 0);
 
     for (i = 0; i < elem->in_num; i++) {
-        data.in_addr[i] = elem->in_addr[i];
+        qemu_put_be64s(f, &elem->in_addr[i]);
     }
+    qemu_put_buffer(f, (uint8_t *)addr, sizeof(addr) - i * sizeof(addr[0]));
 
     for (i = 0; i < elem->out_num; i++) {
-        data.out_addr[i] = elem->out_addr[i];
+        qemu_put_be64s(f, &elem->out_addr[i]);
     }
+    qemu_put_buffer(f, (uint8_t *)addr, sizeof(addr) - i * sizeof(addr[0]));
 
     for (i = 0; i < elem->in_num; i++) {
-        /* Base is overwritten by virtqueue_map when loading.  Do not
-         * save it, as it would leak the QEMU address space layout.  */
-        data.in_sg[i].iov_len = elem->in_sg[i].iov_len;
+        qemu_put_be64(f, 0);
+        qemu_put_be64(f, elem->in_sg[i].iov_len);
     }
+    qemu_put_buffer(f, (uint8_t *)iov, sizeof(iov) - i * sizeof(iov[0]));
 
     for (i = 0; i < elem->out_num; i++) {
-        /* Do not save iov_base as above.  */
-        data.out_sg[i].iov_len = elem->out_sg[i].iov_len;
+        qemu_put_be64(f, 0);
+        qemu_put_be64(f, elem->out_sg[i].iov_len);
     }
-    qemu_put_buffer(f, (uint8_t *)&data, sizeof(VirtQueueElementOld));
+    qemu_put_buffer(f, (uint8_t *)iov, sizeof(iov) - i * sizeof(iov[0]));
 }
 
 /* virtio device */
