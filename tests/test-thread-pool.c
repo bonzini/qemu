@@ -44,16 +44,6 @@ static void done_cb(void *opaque, int ret)
     active--;
 }
 
-static void test_submit(void)
-{
-    WorkerTestData data = { .n = 0 };
-    thread_pool_submit(pool, worker_cb, &data);
-    while (data.n == 0) {
-        aio_poll(ctx, true);
-    }
-    g_assert_cmpint(data.n, ==, 1);
-}
-
 static void test_submit_aio(void)
 {
     WorkerTestData data = { .n = 0, .ret = -EINPROGRESS };
@@ -231,7 +221,6 @@ int main(int argc, char **argv)
     pool = aio_get_thread_pool(ctx);
 
     g_test_init(&argc, &argv, NULL);
-    g_test_add_func("/thread-pool/submit", test_submit);
     g_test_add_func("/thread-pool/submit-aio", test_submit_aio);
     g_test_add_func("/thread-pool/submit-co", test_submit_co);
     g_test_add_func("/thread-pool/submit-many", test_submit_many);

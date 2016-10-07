@@ -32,6 +32,5 @@ BlockAIOCB *thread_pool_submit_aio(ThreadPool *pool,
         BlockCompletionFunc *cb, void *opaque);
 int coroutine_fn thread_pool_submit_co(ThreadPool *pool,
         ThreadPoolFunc *func, void *arg);
-void thread_pool_submit(ThreadPool *pool, ThreadPoolFunc *func, void *arg);
 
 #endif

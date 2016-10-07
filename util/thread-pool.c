@@ -167,15 +167,11 @@ static void thread_pool_completion_bh(void *opaque)
 
 restart:
     QLIST_FOREACH_SAFE(elem, &pool->head, all, next) {
-        if (elem->state != THREAD_DONE) {
-            continue;
-        }
+        if (elem->state == THREAD_DONE) {
+            trace_thread_pool_complete(pool, elem, elem->common.opaque,
+                                       elem->ret);
+            QLIST_REMOVE(elem, all);
 
-        trace_thread_pool_complete(pool, elem, elem->common.opaque,
-                                   elem->ret);
-        QLIST_REMOVE(elem, all);
-
-        if (elem->common.cb) {
             /* Read state before ret.  */
             smp_rmb();
 
@@ -193,8 +189,6 @@ restart:
             qemu_bh_cancel(pool->completion_bh);
             qemu_aio_unref(elem);
             goto restart;
-        } else {
-            qemu_aio_unref(elem);
         }
     }
 }
@@ -284,11 +278,6 @@ int coroutine_fn thread_pool_submit_co(ThreadPool *pool, ThreadPoolFunc *func,
     thread_pool_submit_aio(pool, func, arg, thread_pool_co_cb, &tpc);
     qemu_coroutine_yield();
     return tpc.ret;
-}
-
-void thread_pool_submit(ThreadPool *pool, ThreadPoolFunc *func, void *arg)
-{
-    thread_pool_submit_aio(pool, func, arg, NULL, NULL);
 }
 
 static void thread_pool_init_one(ThreadPool *pool, AioContext *ctx)
