@@ -35,7 +35,7 @@ typedef struct BlkverifyRequest {
     int ret;                    /* test image result */
     int raw_ret;                /* raw image result */
 
-    unsigned int done;          /* completion counter */
+    unsigned int to_do;         /* completion counter */
 
     QEMUIOVector *qiov;         /* user I/O vector */
     QEMUIOVector *raw_qiov;     /* cloned I/O vector for raw file */
@@ -168,8 +168,9 @@ static void coroutine_fn blkverify_do_test_req(void *opaque)
 
     r->ret = r->request_fn(s->test_file, r->offset, r->bytes, r->qiov,
                            r->flags);
-    r->done++;
-    qemu_coroutine_enter_if_inactive(r->co);
+    if (--r->to_do == 0) {
+        qemu_coroutine_enter(r->co);
+    }
 }
 
 static void coroutine_fn blkverify_do_raw_req(void *opaque)
@@ -178,8 +179,9 @@ static void coroutine_fn blkverify_do_raw_req(void *opaque)
 
     r->raw_ret = r->request_fn(r->bs->file, r->offset, r->bytes, r->raw_qiov,
                                r->flags);
-    r->done++;
-    qemu_coroutine_enter_if_inactive(r->co);
+    if (--r->to_do == 0) {
+        qemu_coroutine_enter(r->co);
+    }
 }
 
 static int coroutine_fn
@@ -204,10 +206,11 @@ blkverify_co_prwv(BlockDriverState *bs, BlkverifyRequest *r, uint64_t offset,
     co_a = qemu_coroutine_create(blkverify_do_test_req, r);
     co_b = qemu_coroutine_create(blkverify_do_raw_req, r);
 
+    r->to_do = 3;
     qemu_coroutine_enter(co_a);
     qemu_coroutine_enter(co_b);
 
-    while (r->done < 2) {
+    if (--r->to_do > 0) {
         qemu_coroutine_yield();
     }
 
