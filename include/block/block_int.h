@@ -687,7 +687,7 @@ struct BlockDriverState {
     NotifierWithReturnList before_write_notifiers;
 
     /* threshold limit for writes, in bytes. "High water mark". */
-    uint64_t write_threshold_offset;
+    Counter64 write_threshold_offset;
     NotifierWithReturn write_threshold_notifier;
 
     /* Writing to the list requires the BQL _and_ the dirty_bitmap_mutex.

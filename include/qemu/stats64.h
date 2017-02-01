@@ -190,4 +190,127 @@ static inline void stat64_max(Stat64 *s, uint64_t value)
 
 #endif
 
+/* This provides fast reads, but can only increment by a 32-bit value
+ * (and doesn't know about min/max).  The bottom bit of "low" doubles
+ * as a test-and-set spinlock.
+ */
+
+typedef struct Counter64 {
+#ifdef STAT64_NEED_SPINLOCK
+    uint32_t low, high;
+#else
+    uint64_t value;
+#endif
+} Counter64;
+
+#ifndef STAT64_NEED_SPINLOCK
+static inline void count64_init(Counter64 *s, uint64_t value)
+{
+    /* This is not guaranteed to be atomic! */
+    *s = (Counter64) { value };
+}
+
+static inline uint64_t count64_get(const Counter64 *s)
+{
+    return atomic_read(&s->value);
+}
+
+static inline void count64_set(Counter64 *s, uint64_t value)
+{
+    atomic_set(&s->value, value);
+}
+
+static inline void count64_add32(Counter64 *s, uint64_t addend)
+{
+    atomic_add(&s->value, addend);
+}
+#else
+static inline void count64_init(Counter64 *s, uint64_t value)
+{
+    /* This is not guaranteed to be atomic! */
+    *s = (Counter64) { .low = value << 1, .high = value >> 31 };
+}
+
+static inline uint64_t count64_get(Counter64 *s)
+{
+    uint32_t low;
+    uint32_t high, high2;
+
+    do {
+        do {
+            high = atomic_read(&s->high);
+            smp_rmb();
+            low = atomic_read(&s->low);
+            smp_rmb();
+        } while (low & 1);
+
+        /* If the counter went from 0xFFFFFFFE to 0x100000000, we
+         * might read high = 0 (from the older value) and low = 0
+         * (from the newer value); this can happen if the "low bit
+         * set" phase happens entirely between the two reads.  To
+         * avoid this check that high was not updated in the meanwhile.
+         */
+        high2 = atomic_read(&s->high);
+    } while (high2 != high);
+
+    return (((uint64_t)high << 32) | low) >> 1;
+}
+
+static inline uint64_t count64_set(Counter64 *s, uint64_t value)
+{
+    uint32_t old;
+    uint32_t low = (uint32_t)value;
+    uint32_t high = (uint32_t)value >> 32;
+
+    old = atomic_read(&s->low);
+
+    /* Block everyone! */
+    do {
+        old = atomic_xchg(&s->low, 1);
+    } while (unlikely(old == 1));
+
+    /* Bit 0 is reserved for the spinlock.  */
+    value <<= 1;
+    atomic_set(&s->high, value >> 32);
+    smp_wmb();
+    atomic_set(&s->low, (uint32_t)value);
+}
+
+static inline void count64_add32(Counter64 *s, uint64_t addend)
+{
+    uint32_t old, new, val;
+
+    old = atomic_read(&s->low);
+    for (;;) {
+        while (unlikely(old == 1)) {
+            old = atomic_read(&s->low);
+        }
+
+        new = old + (addend << 1);
+        if (new < old) {
+            /* Block everyone! */
+            val = atomic_cmpxchg(&s->low, old, 1);
+            if (val == old) {
+                atomic_set(&s->high, s->high + 1);
+                smp_wmb();
+                /* Unblock after carry is complete.  */
+                atomic_set(&s->low, new);
+                return;
+            }
+        } else {
+            val = atomic_cmpxchg(&s->low, old, new);
+            if (val == old) {
+                return;
+            }
+        }
+        old = val;
+    }
+}
+#endif
+
+static inline void count64_inc(Counter64 *s)
+{
+    count64_add32(s, 1);
+}
+
 #endif

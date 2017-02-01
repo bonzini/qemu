@@ -18,22 +18,29 @@
 #include "qapi-event.h"
 #include "qmp-commands.h"
 
+static QemuSpin qemu_write_threshold_spin;
 
 uint64_t bdrv_write_threshold_get(const BlockDriverState *bs)
 {
-    return bs->write_threshold_offset;
+    return count64_get(&bs->write_threshold_offset);
 }
 
 bool bdrv_write_threshold_is_set(const BlockDriverState *bs)
 {
-    return bs->write_threshold_offset > 0;
+    return count64_get(&bs->write_threshold_offset) > 0;
+}
+
+static void write_threshold_update(BlockDriverState *bs,
+                                   int64_t threshold_bytes)
+{
+    count64_set(&bs->write_threshold_offset, threshold_bytes);
 }
 
 static void write_threshold_disable(BlockDriverState *bs)
 {
     if (bdrv_write_threshold_is_set(bs)) {
         bdrv_remove_before_write_notifier(bs, &bs->write_threshold_notifier);
-        bs->write_threshold_offset = 0;
+        count64_set(&bs->write_threshold_offset, 0);
     }
 }
 
@@ -71,7 +78,9 @@ static int coroutine_fn before_write_notify(NotifierWithReturn *notifier,
             &error_abort);
 
         /* autodisable to avoid flooding the monitor */
+        qemu_spin_lock(&qemu_write_threshold_spin);
         write_threshold_disable(bs);
+        qemu_spin_unlock(&qemu_write_threshold_spin);
     }
 
     return 0; /* should always let other notifiers run */
@@ -83,14 +92,9 @@ static void write_threshold_register_notifier(BlockDriverState *bs)
     bdrv_add_before_write_notifier(bs, &bs->write_threshold_notifier);
 }
 
-static void write_threshold_update(BlockDriverState *bs,
-                                   int64_t threshold_bytes)
-{
-    bs->write_threshold_offset = threshold_bytes;
-}
-
 void bdrv_write_threshold_set(BlockDriverState *bs, uint64_t threshold_bytes)
 {
+    qemu_spin_lock(&qemu_write_threshold_spin);
     if (bdrv_write_threshold_is_set(bs)) {
         if (threshold_bytes > 0) {
             write_threshold_update(bs, threshold_bytes);
@@ -105,6 +109,7 @@ void bdrv_write_threshold_set(BlockDriverState *bs, uint64_t threshold_bytes)
         }
         /* discard bogus disable request */
     }
+    qemu_spin_unlock(&qemu_write_threshold_spin);
 }
 
 void qmp_block_set_write_threshold(const char *node_name,
@@ -119,8 +124,5 @@ void qmp_block_set_write_threshold(const char *node_name,
         return;
     }
 
-    /* Avoid a concurrent write_threshold_disable.  */
-    bdrv_drained_begin(bs);
     bdrv_write_threshold_set(bs, threshold_bytes);
-    bdrv_drained_end(bs);
 }
