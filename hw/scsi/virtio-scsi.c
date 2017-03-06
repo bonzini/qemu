@@ -80,6 +80,7 @@ static void virtio_scsi_complete_req(VirtIOSCSIReq *req)
         scsi_req_unref(req->sreq);
     }
     virtio_scsi_free_req(req);
+    request_count_end(&s->req_count);
 }
 
 static void virtio_scsi_bad_req(VirtIOSCSIReq *req)
@@ -110,6 +111,20 @@ static size_t qemu_sgl_concat(VirtIOSCSIReq *req, struct iovec *iov,
 
     assert(skip == 0);
     return copied;
+}
+
+static void virtio_scsi_request_restarted(SCSIRequest *s)
+{
+    VirtIOSCSI *s = req->dev;
+
+    request_count_begin(&s->req_count);
+}
+
+static void virtio_scsi_request_failed(SCSIRequest *s)
+{
+    VirtIOSCSI *s = req->dev;
+
+    request_count_end(&s->req_count);
 }
 
 static int virtio_scsi_parse_req(VirtIOSCSIReq *req,
@@ -167,6 +182,7 @@ static int virtio_scsi_parse_req(VirtIOSCSIReq *req,
         req->mode = SCSI_XFER_FROM_DEV;
     }
 
+    request_count_begin(&s->req_count);
     return 0;
 }
 
@@ -838,6 +854,8 @@ static struct SCSIBusInfo virtio_scsi_scsi_info = {
 
     .complete = virtio_scsi_command_complete,
     .cancel = virtio_scsi_request_cancelled,
+    .restart = virtio_scsi_request_restarted,
+    .request_failed = virtio_scsi_request_failed,
     .change = virtio_scsi_change,
     .parse_cdb = virtio_scsi_parse_cdb,
     .get_sg_list = virtio_scsi_get_sg_list,

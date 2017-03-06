@@ -54,6 +54,7 @@ static void virtio_blk_req_complete(VirtIOBlockReq *req, unsigned char status)
 
     stb_p(&req->in->status, status);
     virtqueue_push(req->vq, &req->elem, req->in_len);
+    request_count_end(&s->req_count);
     if (s->dataplane_started && !s->dataplane_disabled) {
         virtio_blk_data_plane_notify(s->dataplane, req->vq);
     } else {
@@ -83,6 +84,7 @@ static int virtio_blk_handle_rw_error(VirtIOBlockReq *req, int error,
     }
 
     blk_error_action(s->blk, action, is_read, error);
+    request_count_end(&s->req_count);
     return action != BLOCK_ERROR_ACTION_IGNORE;
 }
 
@@ -538,6 +540,7 @@ static int virtio_blk_handle_request(VirtIOBlockReq *req, MultiReqBuffer *mrb)
             return 0;
         }
 
+        request_count_begin(&s->req_count);
         block_acct_start(blk_get_stats(req->dev->blk),
                          &req->acct, req->qiov.size,
                          is_write ? BLOCK_ACCT_WRITE : BLOCK_ACCT_READ);
@@ -556,9 +559,11 @@ static int virtio_blk_handle_request(VirtIOBlockReq *req, MultiReqBuffer *mrb)
         break;
     }
     case VIRTIO_BLK_T_FLUSH:
+        request_count_begin(&s->req_count);
         virtio_blk_handle_flush(req, mrb);
         break;
     case VIRTIO_BLK_T_SCSI_CMD:
+        request_count_begin(&s->req_count);
         virtio_blk_handle_scsi(req);
         break;
     case VIRTIO_BLK_T_GET_ID:

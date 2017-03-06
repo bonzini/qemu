@@ -192,7 +192,8 @@ void virtio_scsi_dataplane_stop(VirtIODevice *vdev)
 
     virtio_scsi_clear_aio(s);
 
-    blk_drain_all(); /* ensure there are no in-flight requests */
+    /* ensure there are no in-flight requests */
+    request_count_drain(&s->req_count);
 
     for (i = 0; i < vs->conf.num_queues + 2; i++) {
         virtio_bus_set_host_notifier(VIRTIO_BUS(qbus), i, false);

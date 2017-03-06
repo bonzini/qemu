@@ -55,6 +55,7 @@ typedef struct VirtIOBlock {
     bool dataplane_disabled;
     bool dataplane_started;
     struct VirtIOBlockDataPlane *dataplane;
+    RequestCount req_count;
 
     /* While the VM is running, req_mutex protects rq.  */
     QemuMutex req_mutex;

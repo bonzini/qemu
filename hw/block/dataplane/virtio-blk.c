@@ -47,8 +47,10 @@ struct VirtIOBlockDataPlane {
 /* Raise an interrupt to signal guest, if necessary */
 void virtio_blk_data_plane_notify(VirtIOBlockDataPlane *s, VirtQueue *vq)
 {
-    set_bit(virtio_get_queue_index(vq), s->batch_notify_vqs);
-    qemu_bh_schedule(s->bh);
+    if (test_and_set_bit(virtio_get_queue_index(vq), s->batch_notify_vqs)) {
+        request_count_begin(&s->req_count);
+        qemu_bh_schedule(s->bh);
+    }
 }
 
 static void notify_guest_bh(void *opaque)
@@ -68,6 +70,7 @@ static void notify_guest_bh(void *opaque)
             unsigned i = j + ctzl(bits);
             VirtQueue *vq = virtio_get_queue(s->vdev, i);
 
+            request_count_end(&s->req_count);
             virtio_notify_irqfd(s->vdev, vq);
 
             bits &= bits - 1; /* clear right-most bit */
@@ -256,6 +259,8 @@ void virtio_blk_data_plane_stop(VirtIODevice *vdev)
 
     /* Drain and switch bs back to the QEMU main loop */
     blk_set_aio_context(s->conf->conf.blk, qemu_get_aio_context());
+
+    request_count_drain(&s->req_count);
 
     for (i = 0; i < nvqs; i++) {
         virtio_bus_set_host_notifier(VIRTIO_BUS(qbus), i, false);

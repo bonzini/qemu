@@ -81,6 +81,7 @@ typedef struct VirtIOSCSI {
 
     /* Fields for dataplane below */
     AioContext *ctx; /* one iothread per virtio-scsi-pci for now */
+    RequestCount req_count;
     QemuMutex events_lock;
 
     bool dataplane_started;
