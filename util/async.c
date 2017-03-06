@@ -481,6 +481,15 @@ void aio_co_enter(AioContext *ctx, struct Coroutine *co)
     }
 }
 
+static void dummy_bh_cb(void *opaque)
+{
+}
+
+void aio_wakeup(AioContext *ctx)
+{
+    aio_bh_schedule_oneshot(ctx, dummy_bh_cb, NULL);
+}
+
 void aio_context_ref(AioContext *ctx)
 {
     g_source_ref(&ctx->source);

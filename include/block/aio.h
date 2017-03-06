@@ -184,17 +184,19 @@ void aio_bh_schedule_oneshot(AioContext *ctx, QEMUBHFunc *cb, void *opaque);
 QEMUBH *aio_bh_new(AioContext *ctx, QEMUBHFunc *cb, void *opaque);
 
 /**
- * aio_notify: Force processing of pending events.
+ * aio_notify: Force event loop recalculation.
  *
- * Similar to signaling a condition variable, aio_notify forces
- * aio_poll to exit, so that the next call will re-examine pending events.
- * The caller of aio_notify will usually call aio_poll again very soon,
- * or go through another iteration of the GLib main loop.  Hence, aio_notify
- * also has the side effect of recalculating the sets of file descriptors
- * that the main loop waits for.
+ * Ensures that the timeout and the sets of file descriptors used by the
+ * #AioContext event loop are up-to-date.
+
+ * In the main I/O thread event loop, aio_poll() or the GLib main loop are
+ * called over and over.  If aio_poll() is in progress, aio_notify() forces
+ * it to exit, so that the next call will re-examine pending events.  However,
+ * calling aio_notify() does *not* ensure that the next call to aio_poll()
+ * exits promptly.  If that is what you want, use aio_wakeup.
  *
- * Calling aio_notify is rarely necessary, because for example scheduling
- * a bottom half calls it already.
+ * Calling aio_notify() is rarely necessary.  For example, scheduling
+ * a bottom half or setting up a timer calls it already.
  */
 void aio_notify(AioContext *ctx);
 
@@ -540,5 +542,15 @@ void aio_context_setup(AioContext *ctx);
 void aio_context_set_poll_params(AioContext *ctx, int64_t max_ns,
                                  int64_t grow, int64_t shrink,
                                  Error **errp);
+
+/**
+ * aio_wakeup: Force aio_poll() to exit.
+ *
+ * aio_wakeup() forces a concurrent or upcoming call to aio_poll() to
+ * exit immediately.  When an #AioContext A (typically QEMU's main AioContext)
+ * is waiting on a condition that will become true in thread B, thread B can
+ * use aio_wakeup to wake up #AioContext A.
+ */
+void aio_wakeup(AioContext *ctx);
 
 #endif
