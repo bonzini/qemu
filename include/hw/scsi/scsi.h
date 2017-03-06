@@ -125,6 +125,8 @@ struct SCSIBusInfo {
     void (*complete)(SCSIRequest *req, uint32_t arg, size_t resid);
     void (*cancel)(SCSIRequest *req);
     void (*change)(SCSIBus *bus, SCSIDevice *dev, SCSISense sense);
+    void (*restart)(SCSIRequest *req);
+    void (*request_failed)(SCSIRequest *req);
     QEMUSGList *(*get_sg_list)(SCSIRequest *req);
 
     void (*save_request)(QEMUFile *f, SCSIRequest *req);

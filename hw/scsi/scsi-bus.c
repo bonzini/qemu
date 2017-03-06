@@ -111,6 +111,9 @@ static void scsi_dma_restart_bh(void *opaque)
     QTAILQ_FOREACH_SAFE(req, &s->requests, next, next) {
         scsi_req_ref(req);
         if (req->retry) {
+            if (req->bus->info->restart) {
+                req->bus->info->restart(req);
+            }
             req->retry = false;
             switch (req->cmd.mode) {
             case SCSI_XFER_FROM_DEV:
@@ -129,6 +132,10 @@ static void scsi_dma_restart_bh(void *opaque)
 
 void scsi_req_retry(SCSIRequest *req)
 {
+    if (req->bus->info->request_failed) {
+        req->bus->info->request_failed(req);
+    }
+
     /* No need to save a reference, because scsi_dma_restart_bh just
      * looks at the request list.  */
     req->retry = true;
