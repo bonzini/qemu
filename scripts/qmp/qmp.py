@@ -117,7 +117,7 @@ class QEMUMonitorProtocol(object):
         # if wait is 0.0, this means "no wait" and is also implicitly false.
         if not self.__events and wait:
             if isinstance(wait, float):
-                self.__sock.settimeout(wait)
+                self.__sock.settimeout(None)
             try:
                 ret = self.__json_read(only_event=True)
             except socket.timeout:
@@ -151,7 +151,7 @@ class QEMUMonitorProtocol(object):
         @raise QMPConnectError if the greeting is not received
         @raise QMPCapabilitiesError if fails to negotiate capabilities
         """
-        self.__sock.settimeout(15)
+        self.__sock.settimeout(None)
         self.__sock, _ = self.__sock.accept()
         self.__sockfile = self.__sock.makefile()
         return self.__negotiate_capabilities()
@@ -247,7 +247,7 @@ class QEMUMonitorProtocol(object):
         self.__sockfile.close()
 
     def settimeout(self, timeout):
-        self.__sock.settimeout(timeout)
+        self.__sock.settimeout(None)
 
     def get_sock_fd(self):
         return self.__sock.fileno()

@@ -209,14 +209,19 @@ static void block_job_attached_aio_context(AioContext *new_context,
  */
 static void block_job_drain(BlockJob *job)
 {
+    printf("draining job %p (blk %p)\n", job, job->blk);
+
     /* If job is !job->busy this kicks it into the next pause point. */
     block_job_enter(job);
 
     /* Unlock while invoking callbacks.  */
     block_job_unlock();
     blk_drain(job->blk);
+    printf("done draining source for job %p\n", job);
     if (job->driver->drain) {
+        printf("draining target for job %p\n", job);
         job->driver->drain(job);
+        printf("done draining target for job %p\n", job);
     }
     block_job_lock();
 }
@@ -478,6 +483,7 @@ static void block_job_completed_txn_abort(BlockJob *job)
     }
 
     txn->aborting = true;
+    printf("entered txn abort for %p\n", job);
     block_job_txn_ref(txn);
 
     /* We are the first failed job, cancel other jobs. Note that this job,
@@ -491,6 +497,7 @@ static void block_job_completed_txn_abort(BlockJob *job)
     while (!QLIST_EMPTY(&txn->jobs)) {
         other_job = QLIST_FIRST(&txn->jobs);
         if (!other_job->completed) {
+            printf("complete sync %p\n", other_job);
             assert(other_job->cancelled);
             block_job_finish_sync(other_job, NULL, NULL);
         }
@@ -528,6 +535,7 @@ static void block_job_completed_locked(BlockJob *job, int ret)
 {
     assert(blk_bs(job->blk)->job == job);
     assert(!job->completed);
+    printf("completed %p ret=%d\n", job, ret);
     job->completed = true;
     job->ret = ret;
     if (!job->txn) {

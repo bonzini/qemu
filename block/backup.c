@@ -248,6 +248,7 @@ static void backup_clean(BlockJob *job)
     blk_drain(job->blk);
     g_free(s->done_bitmap);
 
+    printf("unrefing target %p for %p\n", s->target, job);
     assert(s->target);
     blk_unref(s->target);
     s->target = NULL;
@@ -345,6 +346,7 @@ static void backup_complete(BlockJob *job, void *opaque)
 {
     BackupCompleteData *data = opaque;
 
+    printf("completing %p\n", job);
     block_job_completed(job, data->ret);
     g_free(data);
 }

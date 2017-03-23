@@ -20,6 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import time
 import os
 import iotests
 
@@ -402,6 +403,7 @@ class TestIncrementalBackup(TestIncrementalBackupBase):
 
     def do_transaction_failure_test(self, race=False):
         # Create a second drive, with pattern:
+        time.sleep(10)
         drive1 = self.add_node('drive1')
         self.img_create(drive1['file'], drive1['fmt'])
         io_write_patterns(drive1['file'], (('0x14', 0, 512),
