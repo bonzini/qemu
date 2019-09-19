@@ -225,9 +225,6 @@ endif
 # Needed by "meson install"
 export DESTDIR
 install: all install-datadir install-localstatedir
-	mkdir -p "$(DESTDIR)$(qemu_desktopdir)"
-	$(INSTALL_DATA) $(SRC_PATH)/ui/qemu.desktop \
-		"$(DESTDIR)$(qemu_desktopdir)/qemu.desktop"
 	$(INSTALL_DIR) "$(DESTDIR)$(qemu_datadir)/keymaps"
 	set -e; for x in $(KEYMAPS); do \
 		$(INSTALL_DATA) $(SRC_PATH)/pc-bios/keymaps/$$x "$(DESTDIR)$(qemu_datadir)/keymaps"; \
