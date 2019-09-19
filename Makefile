@@ -207,14 +207,6 @@ distclean: clean
 	rm -f linux-headers/asm
 	rm -Rf .sdk
 
-KEYMAPS=da     en-gb  et  fr     fr-ch  is  lt  no  pt-br  sv \
-ar      de     en-us  fi  fr-be  hr     it  lv  nl         pl  ru     th \
-de-ch  es     fo  fr-ca  hu     ja  mk  pt  sl     tr \
-bepo    cz
-
-install-datadir:
-	$(INSTALL_DIR) "$(DESTDIR)$(qemu_datadir)"
-
 install-localstatedir:
 ifdef CONFIG_POSIX
 ifeq ($(CONFIG_GUEST_AGENT),y)
@@ -224,11 +216,7 @@ endif
 
 # Needed by "meson install"
 export DESTDIR
-install: all install-datadir install-localstatedir
-	$(INSTALL_DIR) "$(DESTDIR)$(qemu_datadir)/keymaps"
-	set -e; for x in $(KEYMAPS); do \
-		$(INSTALL_DATA) $(SRC_PATH)/pc-bios/keymaps/$$x "$(DESTDIR)$(qemu_datadir)/keymaps"; \
-	done
+install: all install-localstatedir
 
 # Add a dependency on the generated files, so that they are always
 # rebuilt before other object files
