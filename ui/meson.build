@@ -111,5 +111,6 @@ if have_system
 endif
 
 subdir('shader')
+subdir('icons')
 
 modules += {'ui': ui_modules}
