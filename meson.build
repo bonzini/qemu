@@ -1109,6 +1109,7 @@ if have_tools
 endif
 
 subdir('tools')
+subdir('scripts')
 subdir('pc-bios')
 subdir('tests')
 subdir('docs')
