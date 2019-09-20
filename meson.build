@@ -367,6 +367,11 @@ if 'CONFIG_LIBPMEM' in config_host
   libpmem = declare_dependency(compile_args: config_host['LIBPMEM_CFLAGS'].split(),
                                link_args: config_host['LIBPMEM_LIBS'].split())
 endif
+tasn1 = not_found
+if 'CONFIG_TASN1' in config_host
+  tasn1 = declare_dependency(compile_args: config_host['TASN1_CFLAGS'].split(),
+                             link_args: config_host['TASN1_LIBS'].split())
+endif
 
 # Create config-host.h
 
