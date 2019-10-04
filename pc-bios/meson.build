@@ -86,5 +86,17 @@ if install_blobs
   install_data(blobs, install_dir: config_host['qemu_datadir'])
 endif
 
+dtc = find_program('dtc', required: false)
+if dtc.found()
+  t = []
+  foreach f: ['bamboo.dts', 'canyonlands.dts']
+    t += custom_target(f,
+                       input: f,
+                       output: '@BASENAME@' + '.dtb',
+                       command: [dtc, '-I', 'dts', '-O', 'dtb', '-o', '@OUTPUT@', '@INPUT@'])
+  endforeach
+  alias_target('update-dtb', t)
+endif
+
 subdir('descriptors')
 subdir('keymaps')
