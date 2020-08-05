@@ -111,8 +111,7 @@ generated-files-y += .git-submodule-status
 Makefile: ;
 configure: ;
 
-.PHONY: all clean cscope distclean install \
-	recurse-all dist msi FORCE
+.PHONY: all clean cscope distclean install dist msi FORCE
 
 $(call set-vpath, $(SRC_PATH))
 
@@ -125,8 +124,6 @@ include $(SRC_PATH)/Makefile.objs
 endif
 
 include $(SRC_PATH)/tests/Makefile.include
-
-all: recurse-all
 
 # LIBFDT_lib="": avoid breaking existing trees with objects requiring -fPIC
 DTC_MAKE_ARGS=-I$(SRC_PATH)/dtc VPATH=$(SRC_PATH)/dtc -C dtc V="$(V)" LIBFDT_lib=""
@@ -164,20 +161,9 @@ slirp/all: .git-submodule-status
 		CC="$(CC)" AR="$(AR)" 	LD="$(LD)" RANLIB="$(RANLIB)"	\
 		CFLAGS="$(QEMU_CFLAGS) $(CFLAGS)" LDFLAGS="$(QEMU_LDFLAGS)")
 
-ROM_DIRS = $(addprefix pc-bios/, $(ROMS))
-ROM_DIRS_RULES=$(foreach t, all clean, $(addsuffix /$(t), $(ROM_DIRS)))
-# Only keep -O and -g cflags
-.PHONY: $(ROM_DIRS_RULES)
-$(ROM_DIRS_RULES):
-	$(call quiet-command,$(MAKE) $(SUBDIR_MAKEFLAGS) -C $(dir $@) V="$(V)" TARGET_DIR="$(dir $@)" CFLAGS="$(filter -O% -g%,$(CFLAGS))" $(notdir $@),)
-
-.PHONY: recurse-all recurse-clean
-recurse-all: $(ROM_DIRS)
-recurse-clean: $(addsuffix /clean, $(ROM_DIRS))
-
 ######################################################################
 
-clean: recurse-clean
+clean:
 # avoid old build problems by removing potentially incorrect old files
 	rm -f config.mak op-i386.h opc-i386.h gen-op-i386.h op-arm.h opc-arm.h gen-op-arm.h
 	find . \( -name '*.so' -o -name '*.dll' -o -name '*.[oda]' \) -type f \
