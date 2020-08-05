@@ -1,5 +1,9 @@
 # Makefile for QEMU.
 
+# Don't use implicit rules or variables
+# we have explicit rules for everything
+MAKEFLAGS += -rR
+
 ifneq ($(words $(subst :, ,$(CURDIR))), 1)
   $(error main directory cannot contain spaces nor colons)
 endif
@@ -73,13 +77,6 @@ seems to have been used for an in-tree build. You can fix this by running \
 endif
 endif
 
-CONFIG_SOFTMMU := $(if $(filter %-softmmu,$(TARGET_DIRS)),y)
-CONFIG_USER_ONLY := $(if $(filter %-user,$(TARGET_DIRS)),y)
-CONFIG_XEN := $(CONFIG_XEN_BACKEND)
-CONFIG_ALL=y
--include config-all-devices.mak
--include config-all-disas.mak
-
 build.ninja: meson-private/coredata.dat
 meson-private/coredata.dat: config-host.mak
 config-host.mak: $(SRC_PATH)/configure $(SRC_PATH)/pc-bios $(SRC_PATH)/VERSION
@@ -99,13 +96,6 @@ ifneq ($(filter-out $(UNCHECKED_GOALS),$(MAKECMDGOALS)),$(if $(MAKECMDGOALS),,fa
 endif
 endif
 
-include $(SRC_PATH)/rules.mak
-
-# lor is defined in rules.mak
-CONFIG_BLOCK := $(call lor,$(CONFIG_SOFTMMU),$(CONFIG_TOOLS))
-
-generated-files-y += .git-submodule-status
-
 # Don't try to regenerate Makefile or configure
 # We don't generate any of them
 Makefile: ;
@@ -113,17 +103,7 @@ configure: ;
 
 .PHONY: all clean cscope distclean install dist msi FORCE
 
-$(call set-vpath, $(SRC_PATH))
-
-LIBS+=-lz $(LIBS_TOOLS)
-
 SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory --quiet) BUILD_DIR=$(BUILD_DIR)
-
-ifneq ($(wildcard config-host.mak),)
-include $(SRC_PATH)/Makefile.objs
-endif
-
-include $(SRC_PATH)/tests/Makefile.include
 
 # LIBFDT_lib="": avoid breaking existing trees with objects requiring -fPIC
 DTC_MAKE_ARGS=-I$(SRC_PATH)/dtc VPATH=$(SRC_PATH)/dtc -C dtc V="$(V)" LIBFDT_lib=""
@@ -165,15 +145,13 @@ slirp/all: .git-submodule-status
 
 clean:
 # avoid old build problems by removing potentially incorrect old files
-	rm -f config.mak op-i386.h opc-i386.h gen-op-i386.h op-arm.h opc-arm.h gen-op-arm.h
 	find . \( -name '*.so' -o -name '*.dll' -o -name '*.[oda]' \) -type f \
 		! -path ./roms/edk2/ArmPkg/Library/GccLto/liblto-aarch64.a \
 		! -path ./roms/edk2/ArmPkg/Library/GccLto/liblto-arm.a \
 		! -path ./roms/edk2/BaseTools/Source/Python/UPT/Dll/sqlite3.dll \
 		-exec rm {} +
-	rm -f TAGS cscope.* *.pod *~ */*~
-	rm -f fsdev/*.pod scsi/*.pod
-	rm -f $(foreach f,$(generated-files-y),$(f) $(f)-timestamp)
+	rm -f *~ */*~
+	rm -f .git-submodule-status
 
 VERSION = $(shell cat $(SRC_PATH)/VERSION)
 
@@ -183,11 +161,10 @@ qemu-%.tar.bz2:
 	$(SRC_PATH)/scripts/make-release "$(SRC_PATH)" "$(patsubst qemu-%.tar.bz2,%,$@)"
 
 distclean: clean
-	rm -f config-host.mak config-host.h*
 	rm -f tests/tcg/config-*.mak
 	rm -f config-all-disas.mak config.status
 	rm -f tests/qemu-iotests/common.env
-	rm -f roms/seabios/config.mak roms/vgabios/config.mak
+	rm -f roms/seabios/config.mak
 	rm -f qemu-plugins-ld.symbols qemu-plugins-ld64.symbols
 	rm -f config.log
 	rm -f linux-headers/asm
@@ -204,17 +181,13 @@ endif
 export DESTDIR
 install: all install-localstatedir
 
-# Add a dependency on the generated files, so that they are always
-# rebuilt before other object files
+# Add a dependency on the submodules, so that they are always
+# checked before other object files
 ifneq ($(wildcard config-host.mak),)
 ifneq ($(filter-out $(UNCHECKED_GOALS),$(MAKECMDGOALS)),$(if $(MAKECMDGOALS),,fail))
-Makefile: $(generated-files-y)
+Makefile: .git-submodule-status
 endif
 endif
-
-# Include automatically generated dependency files
-# Dependencies in Makefile.objs files come from our recursive subdir rules
--include $(wildcard *.d tests/*.d)
 
 include $(SRC_PATH)/tests/docker/Makefile.include
 include $(SRC_PATH)/tests/vm/Makefile.include
@@ -255,3 +228,6 @@ endif
 endif
 	$(call print-help,$(MAKE) [targets],(quiet build, default))
 	$(call print-help,$(MAKE) V=1 [targets],(verbose build))
+
+
+.DELETE_ON_ERROR:

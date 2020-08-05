@@ -875,7 +875,6 @@ Darwin)
 SunOS)
   solaris="yes"
   make="${MAKE-gmake}"
-  install="${INSTALL-ginstall}"
   smbd="${SMBD-/usr/sfw/sbin/smbd}"
   if test -f /usr/include/sys/soundcard.h ; then
     audio_drv_list="oss try-sdl"
@@ -912,7 +911,6 @@ if [ "$bsd" = "yes" ] ; then
 fi
 
 : ${make=${MAKE-make}}
-: ${install=${INSTALL-install}}
 # We prefer python 3.x. A bare 'python' is traditionally
 # python 2.x, but some distros have it as python 3.x, so
 # we check that too
@@ -998,7 +996,7 @@ for opt do
   ;;
   --make=*) make="$optarg"
   ;;
-  --install=*) install="$optarg"
+  --install=*)
   ;;
   --python=*) python="$optarg"
   ;;
@@ -1770,7 +1768,6 @@ Advanced options (experts only):
   --cross-cc-ARCH=CC       use compiler when building ARCH guest test cases
   --cross-cc-flags-ARCH=   use compiler flags when building ARCH guest tests
   --make=MAKE              use specified make [$make]
-  --install=INSTALL        use specified install [$install]
   --python=PYTHON          use specified python [$python]
   --sphinx-build=SPHINX    use specified sphinx-build [$sphinx_build]
   --meson=MESON            use specified meson [$meson]
@@ -7528,11 +7525,7 @@ else
 fi
 
 echo "MAKE=$make" >> $config_host_mak
-echo "INSTALL=$install" >> $config_host_mak
-echo "INSTALL_DIR=$install -d -m 0755" >> $config_host_mak
-echo "INSTALL_DATA=$install -c -m 0644" >> $config_host_mak
-echo "INSTALL_PROG=$install -c -m 0755" >> $config_host_mak
-echo "INSTALL_LIB=$install -c -m 0644" >> $config_host_mak
+echo "INSTALL_DIR=mkdir -p -m 0755" >> $config_host_mak
 echo "PYTHON=$python" >> $config_host_mak
 echo "SPHINX_BUILD=$sphinx_build" >> $config_host_mak
 echo "GENISOIMAGE=$genisoimage" >> $config_host_mak

@@ -417,10 +417,6 @@ of QEMU. The default 'all' target will naturally result in the build of
 every component. Makefile takes care of recursively building submodules
 directly via a non-recursive set of rules.
 
-- Makefile.objs
-
-Defines *-obj-y files corresponding to 
-
 - */meson.build
 
 The meson.build file in the root directory is the main entry point for the
