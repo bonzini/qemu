@@ -29,7 +29,7 @@ for prefix in x86_64-w64-mingw32- i686-w64-mingw32-; do
         --enable-guest-agent \
         --enable-docs
     install_qemu
-    make installer
+    make nsis
     make clean
 
 done

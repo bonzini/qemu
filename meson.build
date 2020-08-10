@@ -1201,6 +1201,29 @@ if build_docs
   endif
 endif
 
+if host_machine.system() == 'windows'
+  nsis_cmd = [
+    find_program('scripts/nsis.sh'),
+    '@OUTPUT@',
+    get_option('prefix'),
+    meson.current_source_dir(),
+    host_machine.cpu_family(),
+    '-DDISPLAYVERSION=@0@'.format(meson.project_version()),
+  ]
+  if build_docs
+    nsis_cmd += '-DCONFIG_DOCUMENTATION=y'
+  endif
+  if 'CONFIG_GTK' in config_host
+    nsis_cmd += '-DCONFIG_GTK=y'
+  endif
+
+  custom_target('nsis',
+                output: 'qemu-setup-' + meson.project_version() + '.exe',
+                input: files('qemu.nsi'),
+                build_always_stale: true,
+                command: nsis_cmd + ['@INPUT@'])
+endif
+
 summary_info = {}
 summary_info += {'Install prefix':    config_host['prefix']}
 summary_info += {'BIOS directory':    config_host['qemu_datadir']}
