@@ -91,13 +91,6 @@ struct SerialMM {
 };
 typedef struct SerialMM SerialMM;
 
-struct SerialIO {
-    SysBusDevice parent;
-
-    SerialState serial;
-};
-typedef struct SerialIO SerialIO;
-
 extern const VMStateDescription vmstate_serial;
 extern const MemoryRegionOps serial_io_ops;
 
@@ -110,10 +103,6 @@ DECLARE_INSTANCE_CHECKER(SerialState, SERIAL,
 #define TYPE_SERIAL_MM "serial-mm"
 DECLARE_INSTANCE_CHECKER(SerialMM, SERIAL_MM,
                          TYPE_SERIAL_MM)
-
-#define TYPE_SERIAL_IO "serial-io"
-DECLARE_INSTANCE_CHECKER(SerialIO, SERIAL_IO,
-                         TYPE_SERIAL_IO)
 
 SerialMM *serial_mm_init(MemoryRegion *address_space,
                          hwaddr base, int regshift,
