@@ -1,0 +1,657 @@
+[
+  {
+    "name": "attr",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "attr/xattr support"
+  },
+  {
+    "name": "brlapi",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "brlapi character device driver"
+  },
+  {
+    "name": "bzip2",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "bzip2 support for DMG images"
+  },
+  {
+    "name": "cap_ng",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "cap_ng support"
+  },
+  {
+    "name": "capstone",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "disabled",
+      "enabled",
+      "auto",
+      "system",
+      "internal"
+    ],
+    "type": "combo",
+    "description": "Whether and how to find the capstone library"
+  },
+  {
+    "name": "cocoa",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "Cocoa user interface (macOS only)"
+  },
+  {
+    "name": "curl",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "CURL block device driver"
+  },
+  {
+    "name": "curses",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "curses UI"
+  },
+  {
+    "name": "default_devices",
+    "value": true,
+    "section": "user",
+    "machine": "any",
+    "type": "boolean",
+    "description": "Include a default selection of devices in emulators"
+  },
+  {
+    "name": "docdir",
+    "value": "doc",
+    "section": "user",
+    "machine": "any",
+    "type": "string",
+    "description": "Base directory for documentation installation (can be empty)"
+  },
+  {
+    "name": "docs",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "Documentations build support"
+  },
+  {
+    "name": "fdt",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "disabled",
+      "enabled",
+      "auto",
+      "system",
+      "internal"
+    ],
+    "type": "combo",
+    "description": "Whether and how to find the libfdt library"
+  },
+  {
+    "name": "gettext",
+    "value": true,
+    "section": "user",
+    "machine": "any",
+    "type": "boolean",
+    "description": "Localization of the GTK+ user interface"
+  },
+  {
+    "name": "glusterfs",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "Glusterfs block device driver"
+  },
+  {
+    "name": "hax",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "HAX acceleration support"
+  },
+  {
+    "name": "hvf",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "HVF acceleration support"
+  },
+  {
+    "name": "iconv",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "Font glyph conversion support"
+  },
+  {
+    "name": "install_blobs",
+    "value": true,
+    "section": "user",
+    "machine": "any",
+    "type": "boolean",
+    "description": "install provided firmware blobs"
+  },
+  {
+    "name": "kvm",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "KVM acceleration support"
+  },
+  {
+    "name": "libiscsi",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "libiscsi userspace initiator"
+  },
+  {
+    "name": "libnfs",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "libnfs block device driver"
+  },
+  {
+    "name": "libslirp:version_suffix",
+    "value": "",
+    "section": "user",
+    "machine": "any",
+    "type": "string",
+    "description": "Suffix to append to SLIRP_VERSION_STRING"
+  },
+  {
+    "name": "libssh",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "libssh block device driver"
+  },
+  {
+    "name": "libudev",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "Use libudev to enumerate host devices"
+  },
+  {
+    "name": "lzfse",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "lzfse support for DMG images"
+  },
+  {
+    "name": "lzo",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "lzo compression support"
+  },
+  {
+    "name": "malloc",
+    "value": "system",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "system",
+      "tcmalloc",
+      "jemalloc"
+    ],
+    "type": "combo",
+    "description": "choose memory allocator to use"
+  },
+  {
+    "name": "malloc_trim",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "enable libc malloc_trim() for memory optimization"
+  },
+  {
+    "name": "mpath",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "Multipath persistent reservation passthrough"
+  },
+  {
+    "name": "qemu_firmwarepath",
+    "value": "",
+    "section": "user",
+    "machine": "any",
+    "type": "string",
+    "description": "search PATH for firmware files"
+  },
+  {
+    "name": "qemu_suffix",
+    "value": "qemu",
+    "section": "user",
+    "machine": "any",
+    "type": "string",
+    "description": "Suffix for QEMU data/modules/config directories (can be empty)"
+  },
+  {
+    "name": "rbd",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "Ceph block device driver"
+  },
+  {
+    "name": "sdl",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "SDL user interface"
+  },
+  {
+    "name": "sdl_image",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "SDL Image support for icons"
+  },
+  {
+    "name": "seccomp",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "seccomp support"
+  },
+  {
+    "name": "slirp",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "disabled",
+      "enabled",
+      "auto",
+      "system",
+      "internal"
+    ],
+    "type": "combo",
+    "description": "Whether and how to find the slirp library"
+  },
+  {
+    "name": "snappy",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "snappy compression support"
+  },
+  {
+    "name": "sparse",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "sparse checker"
+  },
+  {
+    "name": "sphinx_build",
+    "value": "",
+    "section": "user",
+    "machine": "any",
+    "type": "string",
+    "description": "Use specified sphinx-build [$sphinx_build] for building document (default to be empty)"
+  },
+  {
+    "name": "tcg",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "TCG support"
+  },
+  {
+    "name": "u2f",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "U2F emulation support"
+  },
+  {
+    "name": "vhost_user_blk_server",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "build vhost-user-blk server"
+  },
+  {
+    "name": "virtfs",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "virtio-9p support"
+  },
+  {
+    "name": "virtiofsd",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "build virtiofs daemon (virtiofsd)"
+  },
+  {
+    "name": "vnc",
+    "value": "enabled",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "VNC server"
+  },
+  {
+    "name": "vnc_jpeg",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "JPEG lossy compression for VNC server"
+  },
+  {
+    "name": "vnc_png",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "PNG compression for VNC server"
+  },
+  {
+    "name": "vnc_sasl",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "SASL authentication for VNC server"
+  },
+  {
+    "name": "whpx",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "WHPX acceleration support"
+  },
+  {
+    "name": "xen",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "Xen backend support"
+  },
+  {
+    "name": "xen_pci_passthrough",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "Xen PCI passthrough support"
+  },
+  {
+    "name": "xkbcommon",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "xkbcommon support"
+  },
+  {
+    "name": "zstd",
+    "value": "auto",
+    "section": "user",
+    "machine": "any",
+    "choices": [
+      "enabled",
+      "disabled",
+      "auto"
+    ],
+    "type": "combo",
+    "description": "zstd compression support"
+  }
+]
