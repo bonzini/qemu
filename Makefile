@@ -137,11 +137,10 @@ configure: ;
 .PHONY: all clean distclean install \
 	recurse-all dist msi FORCE
 
-SUBMODULE_CFLAGS = $(QEMU_CFLAGS) $(CFLAGS)
 SUBDIR_MAKEFLAGS = $(if $(V),,--no-print-directory --quiet)		\
 	PKG_CONFIG="$(PKG_CONFIG)" 					\
 	CC="$(CC)" AR="$(AR)" LD="$(LD)" RANLIB="$(RANLIB)"		\
-	CFLAGS="$(SUBMODULE_CFLAGS)" LDFLAGS="$(QEMU_LDFLAGS)"		\
+	CFLAGS="$(SUBMODULE_CFLAGS)" LDFLAGS="$(SUBMODULE_LDFLAGS)"	\
 	ARFLAGS="$(ARFLAGS)"
 
 include $(SRC_PATH)/tests/Makefile.include
