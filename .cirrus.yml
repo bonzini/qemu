@@ -1,6 +1,10 @@
 env:
   CIRRUS_CLONE_DEPTH: 1
 
+  # Pass values from cirrus-run environment
+  CLONE_URL: "{{ CI_REPOSITORY_URL }}"
+  CLONE_SHA: "{{ CI_COMMIT_SHA }}"
+
 freebsd_12_task:
   freebsd_instance:
     image_family: freebsd-12-1
@@ -10,6 +14,9 @@ freebsd_12_task:
     - ASSUME_ALWAYS_YES=yes pkg bootstrap -f ;
     - pkg install -y bash curl cyrus-sasl git glib gmake gnutls gsed
           nettle perl5 pixman pkgconf png usbredir
+  clone_script:
+    - git clone --recursive $CLONE_URL $CIRRUS_WORKING_DIR
+    - git reset --hard $CLONE_SHA
   script:
     - mkdir build
     - cd build
@@ -22,6 +29,9 @@ macos_task:
     image: catalina-base
   install_script:
     - brew install pkg-config python gnu-sed glib pixman make sdl2 bash
+  clone_script:
+    - git clone --recursive $CLONE_URL $CIRRUS_WORKING_DIR
+    - git reset --hard $CLONE_SHA
   script:
     - mkdir build
     - cd build
@@ -37,6 +47,9 @@ macos_xcode_task:
     image: catalina-xcode
   install_script:
     - brew install pkg-config gnu-sed glib pixman make sdl2 bash
+  clone_script:
+    - git clone --recursive $CLONE_URL $CIRRUS_WORKING_DIR
+    - git reset --hard $CLONE_SHA
   script:
     - mkdir build
     - cd build
@@ -99,6 +112,9 @@ windows_msys2_task:
         mingw-w64-x86_64-curl
         mingw-w64-x86_64-gnutls
         mingw-w64-x86_64-zstd"
+  clone_script:
+    - C:\tools\msys64\usr\bin\bash.exe -lc "git clone --recursive $CLONE_URL $CIRRUS_WORKING_DIR"
+    - C:\tools\msys64\usr\bin\bash.exe -lc "git reset --hard $CLONE_SHA"
   script:
     - C:\tools\msys64\usr\bin\bash.exe -lc "mkdir build"
     - C:\tools\msys64\usr\bin\bash.exe -lc "cd build && ../configure
