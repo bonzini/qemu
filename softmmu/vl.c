@@ -3069,6 +3069,11 @@ void qemu_finish_machine_init(void)
     MachineClass *machine_class = MACHINE_GET_CLASS(current_machine);
     DisplayState *ds;
 
+    if (semihosting_enabled() && !semihosting_get_argc() && current_machine->kernel_filename) {
+        /* fall back to the -kernel/-append */
+        semihosting_arg_fallback(current_machine->kernel_filename, current_machine->kernel_cmdline);
+    }
+
     if (machine_class->default_ram_id && current_machine->ram_size &&
         numa_uses_legacy_mem() && !current_machine->ram_memdev_id) {
         create_default_memdev(current_machine, mem_path);
@@ -4376,13 +4381,6 @@ void qemu_init(int argc, char **argv, char **envp)
 
     if (!boot_order) {
         boot_order = machine_class->default_boot_order;
-    }
-
-    if (semihosting_enabled() && !semihosting_get_argc()) {
-        const char *kernel_filename = qemu_opt_get(machine_opts, "kernel");
-        const char *kernel_cmdline = qemu_opt_get(machine_opts, "append");
-        /* fall back to the -kernel/-append */
-        semihosting_arg_fallback(kernel_filename, kernel_cmdline);
     }
 
     if (net_init_clients(&err) < 0) {
