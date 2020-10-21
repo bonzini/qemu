@@ -3196,6 +3196,11 @@ void qemu_finish_machine_init(void)
         exit(1);
     }
 
+    /* This checkpoint is required by replay to separate prior clock
+       reading from the other reads, because timer polling functions query
+       clock values from the log. */
+    replay_checkpoint(CHECKPOINT_INIT);
+
     machine_run_board_init(current_machine);
 
     /*
@@ -4429,11 +4434,6 @@ void qemu_init(int argc, char **argv, char **envp)
         exit(1);
     if (foreach_device_config(DEV_DEBUGCON, debugcon_parse) < 0)
         exit(1);
-
-    /* This checkpoint is required by replay to separate prior clock
-       reading from the other reads, because timer polling functions query
-       clock values from the log. */
-    replay_checkpoint(CHECKPOINT_INIT);
 
     current_machine->boot_order = boot_order;
 
