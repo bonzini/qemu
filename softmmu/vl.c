@@ -3199,6 +3199,11 @@ static void qemu_init_board(void)
         exit(1);
     }
 
+    /* This checkpoint is required by replay to separate prior clock
+       reading from the other reads, because timer polling functions query
+       clock values from the log. */
+    replay_checkpoint(CHECKPOINT_INIT);
+
     machine_run_board_init(current_machine);
 
     /*
@@ -4440,11 +4445,6 @@ void qemu_init(int argc, char **argv, char **envp)
     /* now chardevs have been created we may have semihosting to connect */
     qemu_semihosting_connect_chardevs();
     qemu_semihosting_console_init();
-
-    /* This checkpoint is required by replay to separate prior clock
-       reading from the other reads, because timer polling functions query
-       clock values from the log. */
-    replay_checkpoint(CHECKPOINT_INIT);
 
     current_machine->boot_order = boot_order;
 
