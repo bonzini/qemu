@@ -4276,7 +4276,8 @@ void qemu_init(int argc, char **argv, char **envp)
     qemu_opts_foreach(qemu_find_opts("mon"),
                       mon_init_func, NULL, &error_fatal);
 
-    /* connect semihosting console input if requested */
+    /* now chardevs have been created we may have semihosting to connect */
+    qemu_semihosting_connect_chardevs();
     qemu_semihosting_console_init();
 
     if (foreach_device_config(DEV_SERIAL, serial_parse) < 0)
@@ -4285,9 +4286,6 @@ void qemu_init(int argc, char **argv, char **envp)
         exit(1);
     if (foreach_device_config(DEV_DEBUGCON, debugcon_parse) < 0)
         exit(1);
-
-    /* now chardevs have been created we may have semihosting to connect */
-    qemu_semihosting_connect_chardevs();
 
     /* If no default VGA is requested, the default is "none".  */
     if (default_vga) {
