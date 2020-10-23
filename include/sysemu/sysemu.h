@@ -111,6 +111,7 @@ QemuOpts *qemu_get_machine_opts(void);
 bool defaults_enabled(void);
 
 void qemu_init(int argc, char **argv, char **envp);
+void qemu_finish_machine_init(void);
 void qemu_main_loop(void);
 void qemu_cleanup(void);
 
