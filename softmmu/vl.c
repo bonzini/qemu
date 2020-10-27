@@ -2441,7 +2441,7 @@ static void qemu_machine_creation_done(void)
 
 void qmp_x_exit_preconfig(Error **errp)
 {
-    if (qdev_hotplug) {
+    if (phase_check(PHASE_MACHINE_READY)) {
         error_setg(errp, "The command is permitted only before machine initialization");
         return;
     }
@@ -3421,12 +3421,14 @@ void qemu_init(int argc, char **argv, char **envp)
     qemu_create_early_backends();
 
     qemu_apply_machine_options();
+    phase_advance(PHASE_MACHINE_CREATED);
 
     /*
      * Note: uses machine properties such as kernel-irqchip, must run
      * after machine_set_property().
      */
     configure_accelerators(argv[0]);
+    phase_advance(PHASE_ACCEL_CREATED);
 
     /*
      * Beware, QOM objects created before this point miss global and

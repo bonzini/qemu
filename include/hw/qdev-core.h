@@ -804,7 +804,6 @@ Object *qdev_get_machine(void);
 /* FIXME: make this a link<> */
 bool qdev_set_parent_bus(DeviceState *dev, BusState *bus, Error **errp);
 
-extern bool qdev_hotplug;
 extern bool qdev_hot_removed;
 
 char *qdev_get_dev_path(DeviceState *dev);
@@ -829,5 +828,16 @@ void device_listener_unregister(DeviceListener *listener);
  * and return if the device should be added now or not.
  */
 bool qdev_should_hide_device(QemuOpts *opts);
+
+typedef enum MachineInitPhase {
+    PHASE_NO_MACHINE,
+    PHASE_MACHINE_CREATED,
+    PHASE_ACCEL_CREATED,
+    PHASE_MACHINE_INITIALIZED,
+    PHASE_MACHINE_READY,
+} MachineInitPhase;
+
+extern bool phase_check(MachineInitPhase phase);
+extern void phase_advance(MachineInitPhase phase);
 
 #endif

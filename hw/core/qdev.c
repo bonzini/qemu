@@ -41,7 +41,6 @@
 #include "migration/vmstate.h"
 #include "trace.h"
 
-bool qdev_hotplug = false;
 static bool qdev_hot_added = false;
 bool qdev_hot_removed = false;
 
@@ -432,8 +431,7 @@ void qdev_machine_creation_done(void)
      * ok, initial machine setup is done, starting from now we can
      * only create hotpluggable devices
      */
-    qdev_hotplug = true;
-
+    phase_advance(PHASE_MACHINE_READY);
     object_child_foreach_recursive(object_get_root(),
                                    qdev_assert_realized_properly, NULL);
 }
@@ -1029,7 +1027,7 @@ static void device_initfn(Object *obj)
 {
     DeviceState *dev = DEVICE(obj);
 
-    if (qdev_hotplug) {
+    if (phase_check(PHASE_MACHINE_READY)) {
         dev->hotplugged = 1;
         qdev_hot_added = true;
     }
@@ -1271,6 +1269,19 @@ Object *qdev_get_machine(void)
     }
 
     return dev;
+}
+
+static MachineInitPhase machine_phase;
+
+bool phase_check(MachineInitPhase phase)
+{
+    return machine_phase >= phase;
+}
+
+void phase_advance(MachineInitPhase phase)
+{
+    assert(machine_phase == phase - 1);
+    machine_phase = phase;
 }
 
 static const TypeInfo device_type_info = {

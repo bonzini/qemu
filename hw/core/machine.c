@@ -1260,6 +1260,7 @@ void machine_run_board_init(MachineState *machine, Error **errp)
     }
 
     machine_class->init(machine);
+    phase_advance(PHASE_MACHINE_INITIALIZED);
 }
 
 static NotifierList machine_init_done_notifiers =
