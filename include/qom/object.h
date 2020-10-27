@@ -1745,10 +1745,23 @@ ObjectProperty *object_property_add_uint8_ptr(Object *obj, const char *name,
                                               const uint8_t *v,
                                               ObjectPropertyFlags flags);
 
-ObjectProperty *object_class_property_add_uint8_ptr(ObjectClass *klass,
-                                         const char *name,
-                                         const uint8_t *v,
-                                         ObjectPropertyFlags flags);
+/**
+ * object_class_property_add_uint8:
+ * @klass: the class to add a property to
+ * @name: the name of the property
+ * @get: a getter function for the property
+ * @set: a setter function for the property
+ *
+ * Add an integer property in memory.  This function will add a
+ * property of type 'uint8'.
+ *
+ * Returns: The newly added property on success, or %NULL on failure.
+ */
+ObjectProperty *
+object_class_property_add_uint8(ObjectClass *klass, const char *name,
+                                uint8_t (*get)(Object *obj, Error **errp),
+                                void (*set)(Object *obj, uint8_t value, Error **errp));
+
 
 /**
  * object_property_add_uint16_ptr:
@@ -1766,10 +1779,23 @@ ObjectProperty *object_property_add_uint16_ptr(Object *obj, const char *name,
                                     const uint16_t *v,
                                     ObjectPropertyFlags flags);
 
-ObjectProperty *object_class_property_add_uint16_ptr(ObjectClass *klass,
-                                          const char *name,
-                                          const uint16_t *v,
-                                          ObjectPropertyFlags flags);
+/**
+ * object_class_property_add_uint16:
+ * @klass: the class to add a property to
+ * @name: the name of the property
+ * @get: a getter function for the property
+ * @set: a setter function for the property
+ *
+ * Add an integer property in memory.  This function will add a
+ * property of type 'uint16'.
+ *
+ * Returns: The newly added property on success, or %NULL on failure.
+ */
+ObjectProperty *
+object_class_property_add_uint16(ObjectClass *klass, const char *name,
+                                 uint16_t (*get)(Object *obj, Error **errp),
+                                 void (*set)(Object *obj, uint16_t value, Error **errp));
+
 
 /**
  * object_property_add_uint32_ptr:
@@ -1787,10 +1813,23 @@ ObjectProperty *object_property_add_uint32_ptr(Object *obj, const char *name,
                                     const uint32_t *v,
                                     ObjectPropertyFlags flags);
 
-ObjectProperty *object_class_property_add_uint32_ptr(ObjectClass *klass,
-                                          const char *name,
-                                          const uint32_t *v,
-                                          ObjectPropertyFlags flags);
+/**
+ * object_class_property_add_uint32:
+ * @klass: the class to add a property to
+ * @name: the name of the property
+ * @get: a getter function for the property
+ * @set: a setter function for the property
+ *
+ * Add an integer property in memory.  This function will add a
+ * property of type 'uint32'.
+ *
+ * Returns: The newly added property on success, or %NULL on failure.
+ */
+ObjectProperty *
+object_class_property_add_uint32(ObjectClass *klass, const char *name,
+                                 uint32_t (*get)(Object *obj, Error **errp),
+                                 void (*set)(Object *obj, uint32_t value, Error **errp));
+
 
 /**
  * object_property_add_uint64_ptr:
@@ -1808,10 +1847,23 @@ ObjectProperty *object_property_add_uint64_ptr(Object *obj, const char *name,
                                     const uint64_t *v,
                                     ObjectPropertyFlags flags);
 
-ObjectProperty *object_class_property_add_uint64_ptr(ObjectClass *klass,
-                                          const char *name,
-                                          const uint64_t *v,
-                                          ObjectPropertyFlags flags);
+/**
+ * object_class_property_add_uint64:
+ * @klass: the class to add a property to
+ * @name: the name of the property
+ * @get: a getter function for the property
+ * @set: a setter function for the property
+ *
+ * Add an integer property in memory.  This function will add a
+ * property of type 'uint64'.
+ *
+ * Returns: The newly added property on success, or %NULL on failure.
+ */
+ObjectProperty *
+object_class_property_add_uint64(ObjectClass *klass, const char *name,
+                                 uint64_t (*get)(Object *obj, Error **errp),
+                                 void (*set)(Object *obj, uint64_t value, Error **errp));
+
 
 /**
  * object_property_add_alias:

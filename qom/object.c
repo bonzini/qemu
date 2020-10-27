@@ -2447,6 +2447,41 @@ static void property_set_uint8_ptr(Object *obj, Visitor *v, const char *name,
     *field = value;
 }
 
+typedef struct Uint8Property
+{
+    uint8_t (*get)(Object *, Error **);
+    void (*set)(Object *, uint8_t, Error **);
+} Uint8Property;
+
+static void property_get_uint8(Object *obj, Visitor *v, const char *name,
+                               void *opaque, Error **errp)
+{
+    Uint8Property *prop = opaque;
+    uint8_t value;
+    Error *err = NULL;
+
+    value = prop->get(obj, &err);
+    if (err) {
+        error_propagate(errp, err);
+        return;
+    }
+
+    visit_type_uint8(v, name, &value, errp);
+}
+
+static void property_set_uint8(Object *obj, Visitor *v, const char *name,
+                               void *opaque, Error **errp)
+{
+    Uint8Property *prop = opaque;
+    uint8_t value;
+
+    if (!visit_type_uint8(v, name, &value, errp)) {
+        return;
+    }
+
+    prop->set(obj, value, errp);
+}
+
 static void property_get_uint16_ptr(Object *obj, Visitor *v, const char *name,
                                     void *opaque, Error **errp)
 {
@@ -2465,6 +2500,41 @@ static void property_set_uint16_ptr(Object *obj, Visitor *v, const char *name,
     }
 
     *field = value;
+}
+
+typedef struct Uint16Property
+{
+    uint16_t (*get)(Object *, Error **);
+    void (*set)(Object *, uint16_t, Error **);
+} Uint16Property;
+
+static void property_get_uint16(Object *obj, Visitor *v, const char *name,
+                                void *opaque, Error **errp)
+{
+    Uint16Property *prop = opaque;
+    uint16_t value;
+    Error *err = NULL;
+
+    value = prop->get(obj, &err);
+    if (err) {
+        error_propagate(errp, err);
+        return;
+    }
+
+    visit_type_uint16(v, name, &value, errp);
+}
+
+static void property_set_uint16(Object *obj, Visitor *v, const char *name,
+                                void *opaque, Error **errp)
+{
+    Uint16Property *prop = opaque;
+    uint16_t value;
+
+    if (!visit_type_uint16(v, name, &value, errp)) {
+        return;
+    }
+
+    prop->set(obj, value, errp);
 }
 
 static void property_get_uint32_ptr(Object *obj, Visitor *v, const char *name,
@@ -2487,6 +2557,41 @@ static void property_set_uint32_ptr(Object *obj, Visitor *v, const char *name,
     *field = value;
 }
 
+typedef struct Uint32Property
+{
+    uint32_t (*get)(Object *, Error **);
+    void (*set)(Object *, uint32_t, Error **);
+} Uint32Property;
+
+static void property_get_uint32(Object *obj, Visitor *v, const char *name,
+                                void *opaque, Error **errp)
+{
+    Uint32Property *prop = opaque;
+    uint32_t value;
+    Error *err = NULL;
+
+    value = prop->get(obj, &err);
+    if (err) {
+        error_propagate(errp, err);
+        return;
+    }
+
+    visit_type_uint32(v, name, &value, errp);
+}
+
+static void property_set_uint32(Object *obj, Visitor *v, const char *name,
+                                void *opaque, Error **errp)
+{
+    Uint32Property *prop = opaque;
+    uint32_t value;
+
+    if (!visit_type_uint32(v, name, &value, errp)) {
+        return;
+    }
+
+    prop->set(obj, value, errp);
+}
+
 static void property_get_uint64_ptr(Object *obj, Visitor *v, const char *name,
                                     void *opaque, Error **errp)
 {
@@ -2505,6 +2610,41 @@ static void property_set_uint64_ptr(Object *obj, Visitor *v, const char *name,
     }
 
     *field = value;
+}
+
+typedef struct Uint64Property
+{
+    uint64_t (*get)(Object *, Error **);
+    void (*set)(Object *, uint64_t, Error **);
+} Uint64Property;
+
+static void property_get_uint64(Object *obj, Visitor *v, const char *name,
+                                void *opaque, Error **errp)
+{
+    Uint64Property *prop = opaque;
+    uint64_t value;
+    Error *err = NULL;
+
+    value = prop->get(obj, &err);
+    if (err) {
+        error_propagate(errp, err);
+        return;
+    }
+
+    visit_type_uint64(v, name, &value, errp);
+}
+
+static void property_set_uint64(Object *obj, Visitor *v, const char *name,
+                                void *opaque, Error **errp)
+{
+    Uint64Property *prop = opaque;
+    uint64_t value;
+
+    if (!visit_type_uint64(v, name, &value, errp)) {
+        return;
+    }
+
+    prop->set(obj, value, errp);
 }
 
 ObjectProperty *
@@ -2528,23 +2668,20 @@ object_property_add_uint8_ptr(Object *obj, const char *name,
 }
 
 ObjectProperty *
-object_class_property_add_uint8_ptr(ObjectClass *klass, const char *name,
-                                    const uint8_t *v,
-                                    ObjectPropertyFlags flags)
+object_class_property_add_uint8(ObjectClass *klass, const char *name,
+                                uint8_t (*get)(Object *obj, Error **errp),
+                                void (*set)(Object *obj, uint8_t value, Error **errp))
 {
-    ObjectPropertyAccessor *getter = NULL;
-    ObjectPropertyAccessor *setter = NULL;
+    Uint8Property *prop = g_malloc0(sizeof(*prop));
 
-    if ((flags & OBJ_PROP_FLAG_READ) == OBJ_PROP_FLAG_READ) {
-        getter = property_get_uint8_ptr;
-    }
-
-    if ((flags & OBJ_PROP_FLAG_WRITE) == OBJ_PROP_FLAG_WRITE) {
-        setter = property_set_uint8_ptr;
-    }
+    prop->get = get;
+    prop->set = set;
 
     return object_class_property_add(klass, name, "uint8",
-                                     getter, setter, NULL, (void *)v);
+                                     get ? property_get_uint8 : NULL,
+                                     set ? property_set_uint8 : NULL,
+                                     NULL,
+                                     prop);
 }
 
 ObjectProperty *
@@ -2568,23 +2705,20 @@ object_property_add_uint16_ptr(Object *obj, const char *name,
 }
 
 ObjectProperty *
-object_class_property_add_uint16_ptr(ObjectClass *klass, const char *name,
-                                     const uint16_t *v,
-                                     ObjectPropertyFlags flags)
+object_class_property_add_uint16(ObjectClass *klass, const char *name,
+                                 uint16_t (*get)(Object *obj, Error **errp),
+                                 void (*set)(Object *obj, uint16_t value, Error **errp))
 {
-    ObjectPropertyAccessor *getter = NULL;
-    ObjectPropertyAccessor *setter = NULL;
+    Uint16Property *prop = g_malloc0(sizeof(*prop));
 
-    if ((flags & OBJ_PROP_FLAG_READ) == OBJ_PROP_FLAG_READ) {
-        getter = property_get_uint16_ptr;
-    }
-
-    if ((flags & OBJ_PROP_FLAG_WRITE) == OBJ_PROP_FLAG_WRITE) {
-        setter = property_set_uint16_ptr;
-    }
+    prop->get = get;
+    prop->set = set;
 
     return object_class_property_add(klass, name, "uint16",
-                                     getter, setter, NULL, (void *)v);
+                                     get ? property_get_uint16 : NULL,
+                                     set ? property_set_uint16 : NULL,
+                                     NULL,
+                                     prop);
 }
 
 ObjectProperty *
@@ -2608,23 +2742,20 @@ object_property_add_uint32_ptr(Object *obj, const char *name,
 }
 
 ObjectProperty *
-object_class_property_add_uint32_ptr(ObjectClass *klass, const char *name,
-                                     const uint32_t *v,
-                                     ObjectPropertyFlags flags)
+object_class_property_add_uint32(ObjectClass *klass, const char *name,
+                                 uint32_t (*get)(Object *obj, Error **errp),
+                                 void (*set)(Object *obj, uint32_t value, Error **errp))
 {
-    ObjectPropertyAccessor *getter = NULL;
-    ObjectPropertyAccessor *setter = NULL;
+    Uint32Property *prop = g_malloc0(sizeof(*prop));
 
-    if ((flags & OBJ_PROP_FLAG_READ) == OBJ_PROP_FLAG_READ) {
-        getter = property_get_uint32_ptr;
-    }
-
-    if ((flags & OBJ_PROP_FLAG_WRITE) == OBJ_PROP_FLAG_WRITE) {
-        setter = property_set_uint32_ptr;
-    }
+    prop->get = get;
+    prop->set = set;
 
     return object_class_property_add(klass, name, "uint32",
-                                     getter, setter, NULL, (void *)v);
+                                     get ? property_get_uint32 : NULL,
+                                     set ? property_set_uint32 : NULL,
+                                     NULL,
+                                     prop);
 }
 
 ObjectProperty *
@@ -2648,23 +2779,20 @@ object_property_add_uint64_ptr(Object *obj, const char *name,
 }
 
 ObjectProperty *
-object_class_property_add_uint64_ptr(ObjectClass *klass, const char *name,
-                                     const uint64_t *v,
-                                     ObjectPropertyFlags flags)
+object_class_property_add_uint64(ObjectClass *klass, const char *name,
+                                 uint64_t (*get)(Object *obj, Error **errp),
+                                 void (*set)(Object *obj, uint64_t value, Error **errp))
 {
-    ObjectPropertyAccessor *getter = NULL;
-    ObjectPropertyAccessor *setter = NULL;
+    Uint64Property *prop = g_malloc0(sizeof(*prop));
 
-    if ((flags & OBJ_PROP_FLAG_READ) == OBJ_PROP_FLAG_READ) {
-        getter = property_get_uint64_ptr;
-    }
-
-    if ((flags & OBJ_PROP_FLAG_WRITE) == OBJ_PROP_FLAG_WRITE) {
-        setter = property_set_uint64_ptr;
-    }
+    prop->get = get;
+    prop->set = set;
 
     return object_class_property_add(klass, name, "uint64",
-                                     getter, setter, NULL, (void *)v);
+                                     get ? property_get_uint64 : NULL,
+                                     set ? property_set_uint64 : NULL,
+                                     NULL,
+                                     prop);
 }
 
 typedef struct {
