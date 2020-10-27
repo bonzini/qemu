@@ -465,6 +465,48 @@ static void machine_set_hmat(Object *obj, bool value, Error **errp)
     ms->numa_state->hmat_enabled = value;
 }
 
+static uint64_t machine_get_ram_size(Object *obj, Error **errp)
+{
+    MachineState *ms = MACHINE(obj);
+
+    return ms->ram_size;
+}
+
+static void machine_set_ram_size(Object *obj, uint64_t value, Error **errp)
+{
+    MachineState *ms = MACHINE(obj);
+
+    ms->ram_size = value;
+}
+
+static uint64_t machine_get_maxram_size(Object *obj, Error **errp)
+{
+    MachineState *ms = MACHINE(obj);
+
+    return ms->maxram_size;
+}
+
+static void machine_set_maxram_size(Object *obj, uint64_t value, Error **errp)
+{
+    MachineState *ms = MACHINE(obj);
+
+    ms->maxram_size = value;
+}
+
+static uint64_t machine_get_ram_slots(Object *obj, Error **errp)
+{
+    MachineState *ms = MACHINE(obj);
+
+    return ms->ram_slots;
+}
+
+static void machine_set_ram_slots(Object *obj, uint64_t value, Error **errp)
+{
+    MachineState *ms = MACHINE(obj);
+
+    ms->ram_slots = value;
+}
+
 static char *machine_get_nvdimm_persistence(Object *obj, Error **errp)
 {
     MachineState *ms = MACHINE(obj);
@@ -851,6 +893,21 @@ static void machine_class_init(ObjectClass *oc, void *data)
     object_class_property_set_description(oc, "memory-backend",
                                           "Set RAM backend"
                                           "Valid value is ID of hostmem based backend");
+
+    object_class_property_add_uint64(oc, "ram-size",
+        machine_get_ram_size, machine_set_ram_size);
+    object_class_property_set_description(oc, "ram-size",
+        "Initial memory size");
+
+    object_class_property_add_uint64(oc, "max-ram-size",
+        machine_get_maxram_size, machine_set_maxram_size);
+    object_class_property_set_description(oc, "max-ram-size",
+        "Maximum hotpluggable memory size");
+
+    object_class_property_add_uint64(oc, "ram-slots",
+        machine_get_ram_slots, machine_set_ram_slots);
+    object_class_property_set_description(oc, "ram-slots",
+        "Number of slots for memory hotplug");
 }
 
 static void machine_class_base_init(ObjectClass *oc, void *data)

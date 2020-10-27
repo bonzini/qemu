@@ -136,8 +136,6 @@ static const char *boot_order;
 static const char *boot_once;
 static const char *incoming;
 static const char *loadvm;
-static ram_addr_t maxram_size;
-static uint64_t ram_slots;
 static int display_remote;
 static int snapshot;
 static bool preconfig_requested;
@@ -145,7 +143,6 @@ static QemuPluginList plugin_list = QTAILQ_HEAD_INITIALIZER(plugin_list);
 static BlockdevOptionsQueue bdo_queue = QSIMPLEQ_HEAD_INITIALIZER(bdo_queue);
 static bool nographic = false;
 static int mem_prealloc; /* force preallocation of physical target memory */
-static ram_addr_t ram_size;
 static const char *vga_model = NULL;
 static DisplayOptions dpy;
 static int num_serial_hds;
@@ -1668,6 +1665,13 @@ static int machine_set_property(void *opaque,
         return 0;
     }
 
+    if (g_str_equal(qom_name, "ram-size") ||
+        g_str_equal(qom_name, "max-ram-size") ||
+        g_str_equal(qom_name, "ram-slots")) {
+	/* Lying, these properties are set with -m.  */
+	error_setg(errp, "Property '.%s' not found", name);
+	return 1;
+    }
     return object_parse_property_opt(opaque, name, value, "type", errp);
 }
 
@@ -1742,9 +1746,6 @@ static void qemu_apply_machine_options(void)
 
     qemu_opt_foreach(machine_opts, machine_set_property, current_machine,
                      &error_fatal);
-    current_machine->ram_size = ram_size;
-    current_machine->maxram_size = maxram_size;
-    current_machine->ram_slots = ram_slots;
 
     opts = qemu_opts_find(qemu_find_opts("boot-opts"), NULL);
     if (opts) {
@@ -1882,7 +1883,7 @@ static void qemu_resolve_machine_memdev(void)
             exit(EXIT_FAILURE);
         }
         backend_size = object_property_get_uint(backend, "size",  &error_abort);
-        if (have_custom_ram_size() && backend_size != ram_size) {
+        if (have_custom_ram_size() && backend_size != current_machine->ram_size) {
                 error_report("Size specified by -m option must match size of "
                              "explicitly specified 'memory-backend' property");
                 exit(EXIT_FAILURE);
@@ -1892,12 +1893,12 @@ static void qemu_resolve_machine_memdev(void)
                          "'-machine memory-backend'");
             exit(EXIT_FAILURE);
         }
-        ram_size = backend_size;
+        current_machine->ram_size = backend_size;
     }
 
     if (!xen_enabled()) {
         /* On 32-bit hosts, QEMU is limited by virtual address space */
-        if (ram_size > (2047 << 20) && HOST_LONG_BITS == 32) {
+        if (current_machine->ram_size > (2047 << 20) && HOST_LONG_BITS == 32) {
             error_report("at most 2047 MB RAM can be simulated");
             exit(1);
         }
@@ -1908,6 +1909,7 @@ static void set_memory_options(MachineClass *mc)
 {
     uint64_t sz;
     const char *mem_str;
+    ram_addr_t ram_size;
     const ram_addr_t default_ram_size = mc->default_ram_size;
     QemuOpts *opts = qemu_find_opts_singleton("memory");
     Location loc;
@@ -1923,7 +1925,7 @@ static void set_memory_options(MachineClass *mc)
             exit(EXIT_FAILURE);
         }
 
-        sz = qemu_opt_get_size(opts, "size", ram_size);
+        sz = qemu_opt_get_size(opts, "size", 0);
 
         /* Fix up legacy suffix-less format */
         if (g_ascii_isdigit(mem_str[strlen(mem_str) - 1])) {
@@ -1954,7 +1956,7 @@ static void set_memory_options(MachineClass *mc)
 
     /* store value for the future use */
     qemu_opt_set_number(opts, "size", ram_size, &error_abort);
-    maxram_size = ram_size;
+    object_property_set_int(OBJECT(current_machine), "ram-size", ram_size, &error_fatal);
 
     if (qemu_opt_get(opts, "maxmem")) {
         uint64_t slots;
@@ -1975,8 +1977,8 @@ static void set_memory_options(MachineClass *mc)
             exit(EXIT_FAILURE);
         }
 
-        maxram_size = sz;
-        ram_slots = slots;
+        object_property_set_int(OBJECT(current_machine), "max-ram-size", sz, &error_fatal);
+        object_property_set_int(OBJECT(current_machine), "ram-slots", slots, &error_fatal);
     } else if (qemu_opt_get(opts, "slots")) {
         error_report("invalid -m option value: missing 'maxmem' option");
         exit(EXIT_FAILURE);
@@ -1989,9 +1991,9 @@ static void qemu_create_machine(MachineClass *machine_class)
 {
     object_set_machine_compat_props(machine_class->compat_props);
 
+    current_machine = MACHINE(object_new_with_class(OBJECT_CLASS(machine_class)));
     set_memory_options(machine_class);
 
-    current_machine = MACHINE(object_new_with_class(OBJECT_CLASS(machine_class)));
     if (machine_help_func(qemu_get_machine_opts(), current_machine)) {
         exit(0);
     }
