@@ -136,6 +136,7 @@ static const char *boot_order;
 static const char *boot_once;
 static const char *incoming;
 static const char *loadvm;
+static const char *ram_memdev_id;
 static int display_remote;
 static int snapshot;
 static bool preconfig_requested;
@@ -1672,6 +1673,11 @@ static int machine_set_property(void *opaque,
 	error_setg(errp, "Property '.%s' not found", name);
 	return 1;
     }
+    if (g_str_equal(qom_name, "memory-backend")) {
+	/* Resolved later.  */
+        ram_memdev_id = value;
+        return 0;
+    }
     return object_parse_property_opt(opaque, name, value, "type", errp);
 }
 
@@ -1859,54 +1865,31 @@ static void qemu_create_late_backends(void)
     qemu_semihosting_console_init();
 }
 
-static bool have_custom_ram_size(void)
-{
-    QemuOpts *opts = qemu_find_opts_singleton("memory");
-    return !!qemu_opt_get_size(opts, "size", 0);
-}
-
 static void qemu_resolve_machine_memdev(void)
 {
-    if (current_machine->ram_memdev_id) {
+    if (ram_memdev_id) {
         Object *backend;
-        ram_addr_t backend_size;
 
-        backend = object_resolve_path_type(current_machine->ram_memdev_id,
+        backend = object_resolve_path_type(ram_memdev_id,
                                            TYPE_MEMORY_BACKEND, NULL);
         if (!backend) {
-            error_report("Memory backend '%s' not found",
-                         current_machine->ram_memdev_id);
+            error_report("Memory backend '%s' not found", ram_memdev_id);
             exit(EXIT_FAILURE);
         }
-        backend_size = object_property_get_uint(backend, "size",  &error_abort);
-        if (have_custom_ram_size() && backend_size != current_machine->ram_size) {
-                error_report("Size specified by -m option must match size of "
-                             "explicitly specified 'memory-backend' property");
-                exit(EXIT_FAILURE);
-        }
+        object_property_set_link(OBJECT(current_machine),
+                                 "memory-backend", backend, &error_fatal);
         if (mem_path) {
             error_report("'-mem-path' can't be used together with"
                          "'-machine memory-backend'");
             exit(EXIT_FAILURE);
-        }
-        current_machine->ram_size = backend_size;
-    }
-
-    if (!xen_enabled()) {
-        /* On 32-bit hosts, QEMU is limited by virtual address space */
-        if (current_machine->ram_size > (2047 << 20) && HOST_LONG_BITS == 32) {
-            error_report("at most 2047 MB RAM can be simulated");
-            exit(1);
         }
     }
 }
 
 static void set_memory_options(MachineClass *mc)
 {
-    uint64_t sz;
+    uint64_t sz, slots;
     const char *mem_str;
-    ram_addr_t ram_size;
-    const ram_addr_t default_ram_size = mc->default_ram_size;
     QemuOpts *opts = qemu_find_opts_singleton("memory");
     Location loc;
 
@@ -1935,49 +1918,17 @@ static void set_memory_options(MachineClass *mc)
         }
     }
 
-    /* backward compatibility behaviour for case "-m 0" */
-    if (sz == 0) {
-        sz = default_ram_size;
-    }
-
-    sz = QEMU_ALIGN_UP(sz, 8192);
-    if (mc->fixup_ram_size) {
-        sz = mc->fixup_ram_size(sz);
-    }
-    ram_size = sz;
-    if (ram_size != sz) {
-        error_report("ram size too large");
-        exit(EXIT_FAILURE);
-    }
-
     /* store value for the future use */
-    qemu_opt_set_number(opts, "size", ram_size, &error_abort);
-    object_property_set_int(OBJECT(current_machine), "ram-size", ram_size, &error_fatal);
+    qemu_opt_set_number(opts, "size", sz, &error_abort);
+    object_property_set_int(OBJECT(current_machine), "ram-size", sz, &error_fatal);
 
     if (qemu_opt_get(opts, "maxmem")) {
-        uint64_t slots;
-
         sz = qemu_opt_get_size(opts, "maxmem", 0);
-        slots = qemu_opt_get_number(opts, "slots", 0);
-        if (sz < ram_size) {
-            error_report("invalid value of -m option maxmem: "
-                         "maximum memory size (0x%" PRIx64 ") must be at least "
-                         "the initial memory size (0x" RAM_ADDR_FMT ")",
-                         sz, ram_size);
-            exit(EXIT_FAILURE);
-        } else if (slots && sz == ram_size) {
-            error_report("invalid value of -m option maxmem: "
-                         "memory slots were specified but maximum memory size "
-                         "(0x%" PRIx64 ") is equal to the initial memory size "
-                         "(0x" RAM_ADDR_FMT ")", sz, ram_size);
-            exit(EXIT_FAILURE);
-        }
-
         object_property_set_int(OBJECT(current_machine), "max-ram-size", sz, &error_fatal);
+    }
+    if (qemu_opt_get(opts, "slots")) {
+        slots = qemu_opt_get_number(opts, "slots", 0);
         object_property_set_int(OBJECT(current_machine), "ram-slots", slots, &error_fatal);
-    } else if (qemu_opt_get(opts, "slots")) {
-        error_report("invalid -m option value: missing 'maxmem' option");
-        exit(EXIT_FAILURE);
     }
 
     loc_pop(&loc);
@@ -2199,8 +2150,7 @@ static void create_default_memdev(MachineState *ms, const char *path)
                              false, &error_fatal);
     user_creatable_complete(USER_CREATABLE(obj), &error_fatal);
     object_unref(obj);
-    object_property_set_str(OBJECT(ms), "memory-backend", mc->default_ram_id,
-                            &error_fatal);
+    object_property_set_link(OBJECT(ms), "memory-backend", obj, &error_fatal);
 }
 
 static void qemu_validate_options(void)
@@ -2379,7 +2329,7 @@ static void qemu_init_board(void)
     }
 
     if (machine_class->default_ram_id && current_machine->ram_size &&
-        numa_uses_legacy_mem() && !current_machine->ram_memdev_id) {
+        numa_uses_legacy_mem() && !ram_memdev_id) {
         create_default_memdev(current_machine, mem_path);
     }
 
@@ -2391,7 +2341,7 @@ static void qemu_init_board(void)
        clock values from the log. */
     replay_checkpoint(CHECKPOINT_INIT);
 
-    machine_run_board_init(current_machine);
+    machine_run_board_init(current_machine, &error_fatal);
 
     /*
      * TODO To drop support for deprecated bogus if=..., move

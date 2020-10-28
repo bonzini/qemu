@@ -22,6 +22,7 @@
 #include "hw/sysbus.h"
 #include "sysemu/sysemu.h"
 #include "sysemu/numa.h"
+#include "sysemu/xen.h"
 #include "qemu/error-report.h"
 #include "sysemu/qtest.h"
 #include "hw/pci/pci.h"
@@ -475,6 +476,21 @@ static uint64_t machine_get_ram_size(Object *obj, Error **errp)
 static void machine_set_ram_size(Object *obj, uint64_t value, Error **errp)
 {
     MachineState *ms = MACHINE(obj);
+    MachineClass *mc = MACHINE_GET_CLASS(ms);
+
+    value = QEMU_ALIGN_UP(value, 8192);
+    /* backward compatibility behaviour for case "-m 0" */
+    if (value == 0) {
+        value = mc->default_ram_size;
+    }
+
+    if (mc->fixup_ram_size) {
+        value = mc->fixup_ram_size(value);
+    }
+    if ((ram_addr_t)value != value) {
+        error_setg(errp, "ram size too large");
+	return;
+    }
 
     ms->ram_size = value;
 }
@@ -562,22 +578,6 @@ static void validate_sysbus_device(SysBusDevice *sbdev, void *opaque)
         exit(1);
     }
 }
-
-static char *machine_get_memdev(Object *obj, Error **errp)
-{
-    MachineState *ms = MACHINE(obj);
-
-    return g_strdup(ms->ram_memdev_id);
-}
-
-static void machine_set_memdev(Object *obj, const char *value, Error **errp)
-{
-    MachineState *ms = MACHINE(obj);
-
-    g_free(ms->ram_memdev_id);
-    ms->ram_memdev_id = g_strdup(value);
-}
-
 
 static void machine_init_notify(Notifier *notifier, void *data)
 {
@@ -803,6 +803,12 @@ static void smp_parse(MachineState *ms, QemuOpts *opts)
     }
 }
 
+static void prop_link_check_always(const Object *o, const char *name,
+                                   Object *target, Error **errp)
+{
+}
+
+
 static void machine_class_init(ObjectClass *oc, void *data)
 {
     MachineClass *mc = MACHINE_CLASS(oc);
@@ -888,8 +894,9 @@ static void machine_class_init(ObjectClass *oc, void *data)
     object_class_property_set_description(oc, "memory-encryption",
         "Set memory encryption object to use");
 
-    object_class_property_add_str(oc, "memory-backend",
-                                  machine_get_memdev, machine_set_memdev);
+    object_class_property_add_link(oc, "memory-backend", TYPE_MEMORY_BACKEND,
+                                   offsetof(MachineState, memdev), prop_link_check_always,
+                                   OBJ_PROP_LINK_STRONG);
     object_class_property_set_description(oc, "memory-backend",
                                           "Set RAM backend"
                                           "Valid value is ID of hostmem based backend");
@@ -1158,17 +1165,54 @@ bool machine_smp_parse(MachineState *ms, QemuOpts *opts, Error **errp)
     return true;
 }
 
-void machine_run_board_init(MachineState *machine)
+void machine_run_board_init(MachineState *machine, Error **errp)
 {
     MachineClass *machine_class = MACHINE_GET_CLASS(machine);
     ObjectClass *oc = object_class_by_name(machine->cpu_type);
     CPUClass *cc;
 
-    if (machine->ram_memdev_id) {
-        Object *o;
-        o = object_resolve_path_type(machine->ram_memdev_id,
-                                     TYPE_MEMORY_BACKEND, NULL);
-        machine->ram = machine_consume_memdev(machine, MEMORY_BACKEND(o));
+    if (!machine->maxram_size) {
+        if (machine->ram_slots) {
+            error_setg(errp,
+                       "memory slots were specified but maximum memory size "
+                       "was not");
+            return;
+        }
+        machine->maxram_size = machine->ram_size;
+    }
+    if (machine->maxram_size < machine->ram_size) {
+        error_setg(errp, "maximum memory size must be at least "
+                   "the initial memory size");
+        return;
+    }
+    if (machine->maxram_size == machine->ram_size && machine->ram_slots) {
+        error_setg(errp,
+                   "memory slots were specified but maximum memory size "
+                   "is equal to initial memory size");
+        return;
+    }
+
+    if (!xen_enabled()) {
+        /* On 32-bit hosts, QEMU is limited by virtual address space */
+        if (machine->ram_size > (2047 << 20) && HOST_LONG_BITS == 32) {
+            error_setg(errp, "at most 2047 MB RAM can be simulated");
+            return;
+        }
+    }
+
+    if (machine->memdev) {
+        ram_addr_t backend_size = object_property_get_uint(OBJECT(machine->memdev),
+                                                           "size",  &error_abort);
+        if (!machine->ram_size) {
+            machine->ram_size = backend_size;
+        } else if (backend_size != machine->ram_size) {
+            error_setg(errp, "Machine memory size does not match the size of the memory backend");
+            return;
+        }
+
+        machine->ram = machine_consume_memdev(machine, machine->memdev);
+    } else if (!machine->ram_size) {
+        machine->ram_size = machine_class->default_ram_size;
     }
 
     if (machine->numa_state) {
