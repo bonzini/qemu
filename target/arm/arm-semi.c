@@ -36,6 +36,7 @@
 #else
 #include "exec/gdbstub.h"
 #include "qemu/cutils.h"
+#include "hw/boards.h"
 #endif
 
 #define TARGET_SYS_OPEN        0x01
@@ -1044,7 +1045,7 @@ target_ulong do_arm_semihosting(CPUARMState *env)
             retvals[2] = ts->stack_base;
             retvals[3] = 0; /* Stack limit.  */
 #else
-            limit = ram_size;
+            limit = current_machine->ram_size;
             /* TODO: Make this use the limit of the loaded application.  */
             retvals[0] = limit / 2;
             retvals[1] = limit;
