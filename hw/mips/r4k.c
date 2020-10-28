@@ -116,14 +116,14 @@ static int64_t load_kernel(void)
         initrd_size = get_image_size(loaderparams.initrd_filename);
         if (initrd_size > 0) {
             initrd_offset = ROUND_UP(kernel_high, INITRD_PAGE_SIZE);
-            if (initrd_offset + initrd_size > ram_size) {
+            if (initrd_offset + initrd_size > loaderparams.ram_size) {
                 error_report("memory too small for initial ram disk '%s'",
                              loaderparams.initrd_filename);
                 exit(1);
             }
             initrd_size = load_image_targphys(loaderparams.initrd_filename,
                                               initrd_offset,
-                                              ram_size - initrd_offset);
+                                              loaderparams.ram_size - initrd_offset);
         }
         if (initrd_size == (target_ulong) -1) {
             error_report("could not load initial ram disk '%s'",
@@ -135,7 +135,7 @@ static int64_t load_kernel(void)
     /* Store command line.  */
     params_buf = g_malloc(params_size);
 
-    params_buf[0] = tswap32(ram_size);
+    params_buf[0] = tswap32(loaderparams.ram_size);
     params_buf[1] = tswap32(0x12345678);
 
     if (initrd_size > 0) {
@@ -205,7 +205,7 @@ void mips_r4k_init(MachineState *machine)
     /* allocate RAM */
     if (machine->ram_size > 256 * MiB) {
         error_report("Too much memory for this machine: %" PRId64 "MB,"
-                     " maximum 256MB", ram_size / MiB);
+                     " maximum 256MB", machine->ram_size / MiB);
         exit(1);
     }
     memory_region_add_subregion(address_space_mem, 0, machine->ram);
