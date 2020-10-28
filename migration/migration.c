@@ -175,6 +175,10 @@ void migration_object_init(void)
 
 void migration_shutdown(void)
 {
+    if (!current_migration) {
+        return;
+    }
+
     /*
      * Cancel the current migration - that will (eventually)
      * stop the migration using this structure
