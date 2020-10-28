@@ -758,6 +758,7 @@ void qemu_init_subsystems(void)
     bdrv_init_with_whitelist();
     page_size_init();
     socket_init();
+    net_init();
 }
 
 
