@@ -71,7 +71,6 @@ endif
 softmmu_ss.add(when: ['CONFIG_USB', 'CONFIG_USB_LIBUSB', libusb],
                if_true: files('host-libusb.c'),
                if_false: files('host-stub.c'))
-softmmu_ss.add(when: 'CONFIG_ALL', if_true: files('host-stub.c'))
 
 softmmu_ss.add(when: ['CONFIG_USB', 'CONFIG_XEN', libusb], if_true: files('xen-usb.c'))
 

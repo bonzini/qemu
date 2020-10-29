@@ -46,7 +46,6 @@ softmmu_ss.add(when: 'CONFIG_VIRTIO_NET', if_true: files('net_rx_pkt.c'))
 specific_ss.add(when: 'CONFIG_VIRTIO_NET', if_true: files('virtio-net.c'))
 
 softmmu_ss.add(when: ['CONFIG_VIRTIO_NET', 'CONFIG_VHOST_NET'], if_true: files('vhost_net.c'), if_false: files('vhost_net-stub.c'))
-softmmu_ss.add(when: 'CONFIG_ALL', if_true: files('vhost_net-stub.c'))
 
 softmmu_ss.add(when: 'CONFIG_ETSEC', if_true: files(
   'fsl_etsec/etsec.c',
@@ -62,6 +61,5 @@ softmmu_ss.add(when: 'CONFIG_ROCKER', if_true: files(
   'rocker/rocker_of_dpa.c',
   'rocker/rocker_world.c',
 ), if_false: files('rocker/qmp-norocker.c'))
-softmmu_ss.add(when: 'CONFIG_ALL', if_true: files('rocker/qmp-norocker.c'))
 
 subdir('can')

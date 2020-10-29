@@ -16,4 +16,3 @@ softmmu_ss.add(when: 'CONFIG_PCI_EXPRESS', if_true: files('pcie_port.c', 'pcie_h
 softmmu_ss.add_all(when: 'CONFIG_PCI', if_true: pci_ss)
 
 softmmu_ss.add(when: 'CONFIG_PCI', if_false: files('pci-stub.c'))
-softmmu_ss.add(when: 'CONFIG_ALL', if_true: files('pci-stub.c'))
