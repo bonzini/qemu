@@ -25,7 +25,6 @@ softmmu_ss.add(when: 'CONFIG_NETMAP', if_true: files('netmap.c'))
 vhost_user_ss = ss.source_set()
 vhost_user_ss.add(when: 'CONFIG_VIRTIO_NET', if_true: files('vhost-user.c'), if_false: files('vhost-user-stub.c'))
 softmmu_ss.add_all(when: 'CONFIG_VHOST_NET_USER', if_true: vhost_user_ss)
-softmmu_ss.add(when: 'CONFIG_ALL', if_true: files('vhost-user-stub.c'))
 
 softmmu_ss.add(when: 'CONFIG_LINUX', if_true: files('tap-linux.c'))
 softmmu_ss.add(when: 'CONFIG_BSD', if_true: files('tap-bsd.c'))
