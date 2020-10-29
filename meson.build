@@ -801,7 +801,7 @@ endforeach
 ########################
 
 minikconf = find_program('scripts/minikconf.py')
-config_all = {}
+config_all_accel = {}
 config_all_devices = {}
 config_all_disas = {}
 config_devices_mak_list = []
@@ -894,7 +894,7 @@ foreach target : target_dirs
   foreach sym: accelerators
     if sym == 'CONFIG_TCG' or target in accelerator_targets.get(sym, [])
       config_target += { sym: 'y' }
-      config_all += { sym: 'y' }
+      config_all_accel += { sym: 'y' }
       if sym == 'CONFIG_XEN' and have_xen_pci_passthrough
         config_target += { 'CONFIG_XEN_PCI_PASSTHROUGH': 'y' }
       endif
@@ -986,25 +986,6 @@ foreach target : target_dirs
   config_target_mak += {target: config_target}
 endforeach
 target_dirs = actual_target_dirs
-
-# This configuration is used to build files that are shared by
-# multiple binaries, and then extracted out of the "common"
-# static_library target.
-#
-# We do not use all_sources()/all_dependencies(), because it would
-# build literally all source files, including devices only used by
-# targets that are not built for this compilation.  The CONFIG_ALL
-# pseudo symbol replaces it.
-
-config_all += config_all_devices
-config_all += config_host
-config_all += config_all_disas
-config_all += {
-  'CONFIG_XEN': config_host.has_key('CONFIG_XEN_BACKEND'),
-  'CONFIG_SOFTMMU': have_system,
-  'CONFIG_USER_ONLY': have_user,
-  'CONFIG_ALL': true,
-}
 
 ##############
 # Submodules #
@@ -1455,10 +1436,10 @@ if enable_modules
   modulecommon = declare_dependency(link_whole: libmodulecommon, compile_args: '-DBUILD_DSO')
 endif
 
-stub_ss = stub_ss.apply(config_all, strict: false)
+stub_ss = stub_ss.apply(config_host, strict: false)
 
 util_ss.add_all(trace_ss)
-util_ss = util_ss.apply(config_all, strict: false)
+util_ss = util_ss.apply(config_host, strict: false)
 libqemuutil = static_library('qemuutil',
                              sources: util_ss.sources() + stub_ss.sources() + genh,
                              dependencies: [util_ss.dependencies(), m, glib, socket, malloc])
@@ -1547,10 +1528,12 @@ subdir('tests/qtest/fuzz')
 
 block_mods = []
 softmmu_mods = []
+
+config_all_modules = config_all_devices + config_host
 foreach d, list : modules
   foreach m, module_ss : list
     if enable_modules and targetos != 'windows'
-      module_ss = module_ss.apply(config_all, strict: false)
+      module_ss = module_ss.apply(config_all_modules, strict: false)
       sl = static_library(d + '-' + m, [genh, module_ss.sources()],
                           dependencies: [modulecommon, module_ss.dependencies()], pic: true)
       if d == 'block'
@@ -1678,11 +1661,10 @@ common_ss.add(qom, qemuutil)
 common_ss.add_all(when: 'CONFIG_SOFTMMU', if_true: [softmmu_ss])
 common_ss.add_all(when: 'CONFIG_USER_ONLY', if_true: user_ss)
 
-common_all = common_ss.apply(config_all, strict: false)
 common_all = static_library('common',
                             build_by_default: false,
-                            sources: common_all.sources() + genh,
-                            dependencies: common_all.dependencies(),
+                            sources: common_ss.all_sources() + genh,
+                            dependencies: common_ss.all_dependencies(),
                             name_suffix: 'fa')
 
 feature_to_c = find_program('scripts/feature_to_c.sh')
@@ -2065,12 +2047,12 @@ summary_info += {'Linux AIO support': config_host.has_key('CONFIG_LINUX_AIO')}
 summary_info += {'Linux io_uring support': config_host.has_key('CONFIG_LINUX_IO_URING')}
 summary_info += {'ATTR/XATTR support': config_host.has_key('CONFIG_ATTR')}
 summary_info += {'Install blobs':     get_option('install_blobs')}
-summary_info += {'KVM support':       config_all.has_key('CONFIG_KVM')}
-summary_info += {'HAX support':       config_all.has_key('CONFIG_HAX')}
-summary_info += {'HVF support':       config_all.has_key('CONFIG_HVF')}
-summary_info += {'WHPX support':      config_all.has_key('CONFIG_WHPX')}
-summary_info += {'TCG support':       config_all.has_key('CONFIG_TCG')}
-if config_all.has_key('CONFIG_TCG')
+summary_info += {'KVM support':       config_all_accel.has_key('CONFIG_KVM')}
+summary_info += {'HAX support':       config_all_accel.has_key('CONFIG_HAX')}
+summary_info += {'HVF support':       config_all_accel.has_key('CONFIG_HVF')}
+summary_info += {'WHPX support':      config_all_accel.has_key('CONFIG_WHPX')}
+summary_info += {'TCG support':       config_all_accel.has_key('CONFIG_TCG')}
+if config_all_accel.has_key('CONFIG_TCG')
   summary_info += {'TCG debug enabled': config_host.has_key('CONFIG_DEBUG_TCG')}
   summary_info += {'TCG interpreter':   config_host.has_key('CONFIG_TCG_INTERPRETER')}
 endif
