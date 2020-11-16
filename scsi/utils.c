@@ -581,9 +581,9 @@ int sg_io_sense_from_errno(int errno_value, struct sg_io_hdr *io_hdr,
             return CHECK_CONDITION;
         }
     } else {
-        if (io_hdr->host_status == SG_ERR_DID_NO_CONNECT ||
-            io_hdr->host_status == SG_ERR_DID_BUS_BUSY ||
-            io_hdr->host_status == SG_ERR_DID_TIME_OUT ||
+        if (io_hdr->host_status == SCSI_HOST_NO_LUN ||
+            io_hdr->host_status == SCSI_HOST_BUSY ||
+            io_hdr->host_status == SCSI_HOST_TIME_OUT ||
             (io_hdr->driver_status & SG_ERR_DRIVER_TIMEOUT)) {
             return BUSY;
         } else if (io_hdr->host_status) {
