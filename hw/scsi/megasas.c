@@ -1857,6 +1857,15 @@ static void megasas_command_complete(SCSIRequest *req, size_t resid)
     MegasasCmd *cmd = req->hba_private;
     uint8_t cmd_status = MFI_STAT_OK;
 
+    if (req->host_status != SCSI_HOST_OK) {
+        SCSISense sense;
+
+        req->status = scsi_sense_from_host_status(req->host_status, &sense);
+        if (req->status == CHECK_CONDITION) {
+            scsi_req_build_sense(req, sense);
+        }
+    }
+
     trace_megasas_command_complete(cmd->index, req->status, resid);
 
     if (req->io_canceled) {

@@ -522,6 +522,31 @@ pvscsi_command_complete(SCSIRequest *req, size_t resid)
     }
     s = pvscsi_req->dev;
 
+    if (req->host_status != SCSI_HOST_OK) {
+        switch (req->host_status) {
+        case SCSI_HOST_NO_LUN:
+            pvscsi_req->cmp.hostStatus = BTSTAT_LUNMISMATCH;
+            break;
+        case SCSI_HOST_BUSY:
+            pvscsi_req->cmp.hostStatus = BTSTAT_ABORTQUEUE;
+            break;
+        case SCSI_HOST_TIME_OUT:
+        case SCSI_HOST_ABORTED:
+            pvscsi_req->cmp.hostStatus = BTSTAT_SENTRST;
+            break;
+        case SCSI_HOST_BAD_RESPONSE:
+            pvscsi_req->cmp.hostStatus = BTSTAT_SELTIMEO;
+            break;
+        case SCSI_HOST_RESET:
+            pvscsi_req->cmp.hostStatus = BTSTAT_BUSRESET;
+            break;
+        default:
+            pvscsi_req->cmp.hostStatus = BTSTAT_HASOFTWARE;
+            break;
+        }
+        req->status = GOOD;
+    }
+
     if (resid) {
         /* Short transfer.  */
         trace_pvscsi_command_complete_data_run();

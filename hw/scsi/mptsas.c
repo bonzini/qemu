@@ -1143,6 +1143,15 @@ static void mptsas_command_complete(SCSIRequest *sreq,
     hwaddr sense_buffer_addr = req->dev->sense_buffer_high_addr |
             req->scsi_io.SenseBufferLowAddr;
 
+    if (sreq->host_status != SCSI_HOST_OK) {
+        SCSISense sense;
+
+        sreq->status = scsi_sense_from_host_status(sreq->host_status, &sense);
+        if (sreq->status == CHECK_CONDITION) {
+            scsi_req_build_sense(sreq, sense);
+        }
+    }
+
     trace_mptsas_command_complete(s, req->scsi_io.MsgContext,
                                   sreq->status, resid);
 

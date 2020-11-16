@@ -87,11 +87,9 @@ static void scsi_command_complete_noio(SCSIGenericReq *r, int ret)
     if (status == CHECK_CONDITION) {
         scsi_req_build_sense(&r->req, sense);
     } else if (status == GOOD &&
-        io_hdr.host_status != SCSI_HOST_OK) {
-        status = scsi_sense_from_host_status(io_hdr.host_status, &sense);
-        if (status == CHECK_CONDITION) {
-            scsi_req_build_sense(&r->req, sense);
-        }
+               io_hdr.host_status != SCSI_HOST_OK) {
+        status = INTERMEDIATE_GOOD;
+        r->req.host_status = io_hdr.host_status;
     } else if (io_hdr.status == CHECK_CONDITION ||
                io_hdr.driver_status & SG_ERR_DRIVER_SENSE) {
         status = CHECK_CONDITION;

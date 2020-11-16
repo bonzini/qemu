@@ -556,6 +556,16 @@ static void vscsi_command_complete(SCSIRequest *sreq, size_t resid)
     VSCSIState *s = VIO_SPAPR_VSCSI_DEVICE(sreq->bus->qbus.parent);
     vscsi_req *req = sreq->hba_private;
     int32_t res_in = 0, res_out = 0;
+    uint8_t status = sreq->status;
+
+    if (sreq->host_status != SCSI_HOST_OK) {
+        SCSISense sense;
+
+        sreq->status = scsi_sense_from_host_status(sreq->host_status, &sense);
+        if (sreq->status == CHECK_CONDITION) {
+            scsi_req_build_sense(sreq, sense);
+        }
+    }
 
     trace_spapr_vscsi_command_complete(sreq->tag, sreq->status, req);
     if (req == NULL) {
@@ -575,7 +585,7 @@ static void vscsi_command_complete(SCSIRequest *sreq, size_t resid)
     }
 
     trace_spapr_vscsi_command_complete_status(sreq->status);
-    if (sreq->status == 0) {
+    if (sreq->status == GOOD) {
         /* We handle overflows, not underflows for normal commands,
          * but hopefully nobody cares
          */

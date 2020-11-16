@@ -18,6 +18,8 @@
 #include "hw/irq.h"
 #include "hw/pci/pci.h"
 #include "hw/scsi/scsi.h"
+#include "scsi/utils.h"
+#include "scsi/constants.h"
 #include "migration/vmstate.h"
 #include "sysemu/dma.h"
 #include "qemu/log.h"
@@ -791,6 +793,15 @@ static void lsi_command_complete(SCSIRequest *req, size_t resid)
 {
     LSIState *s = LSI53C895A(req->bus->qbus.parent);
     int out;
+
+    if (req->host_status != SCSI_HOST_OK) {
+        SCSISense sense;
+
+        req->status = scsi_sense_from_host_status(req->host_status, &sense);
+        if (req->status == CHECK_CONDITION) {
+            scsi_req_build_sense(req, sense);
+        }
+    }
 
     out = (s->sstat1 & PHASE_MASK) == PHASE_DO;
     trace_lsi_command_complete(req->status);

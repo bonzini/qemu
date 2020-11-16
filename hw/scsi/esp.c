@@ -28,6 +28,8 @@
 #include "migration/vmstate.h"
 #include "hw/irq.h"
 #include "hw/scsi/esp.h"
+#include "scsi/utils.h"
+#include "scsi/constants.h"
 #include "trace.h"
 #include "qemu/log.h"
 #include "qemu/module.h"
@@ -489,6 +491,14 @@ void esp_command_complete(SCSIRequest *req, size_t resid)
 {
     ESPState *s = req->hba_private;
 
+    if (req->host_status != SCSI_HOST_OK) {
+        SCSISense sense;
+
+        req->status = scsi_sense_from_host_status(req->host_status, &sense);
+        if (req->status == CHECK_CONDITION) {
+            scsi_req_build_sense(req, sense);
+        }
+    }
     if (s->rregs[ESP_RSTAT] & STAT_INT) {
         /* Defer handling command complete until the previous
          * interrupt has been handled.

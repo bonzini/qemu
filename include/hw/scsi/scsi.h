@@ -27,7 +27,8 @@ struct SCSIRequest {
     uint32_t          refcount;
     uint32_t          tag;
     uint32_t          lun;
-    uint32_t          status;
+    int16_t           status;
+    int16_t           host_status;
     void              *hba_private;
     size_t            resid;
     SCSICommand       cmd;

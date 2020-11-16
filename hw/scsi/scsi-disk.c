@@ -1850,7 +1850,7 @@ static void scsi_disk_emulate_write_data(SCSIRequest *req)
     case VERIFY_10:
     case VERIFY_12:
     case VERIFY_16:
-        if (r->req.status == -1) {
+        if (r->req.status == GOOD) {
             scsi_check_condition(r, SENSE_CODE(INVALID_FIELD));
         }
         break;
@@ -2132,7 +2132,7 @@ static int32_t scsi_disk_emulate_command(SCSIRequest *req, uint8_t *buf)
     }
 
 illegal_request:
-    if (r->req.status == -1) {
+    if (r->req.status == GOOD) {
         scsi_check_condition(r, SENSE_CODE(INVALID_FIELD));
     }
     return 0;
@@ -2707,10 +2707,8 @@ static void scsi_block_sgio_complete(void *opaque, int ret)
         scsi_req_build_sense(&r->req, sense);
     } else if (status == GOOD &&
                io_hdr.host_status != SCSI_HOST_OK) {
-        status = scsi_sense_from_host_status(io_hdr.host_status, &sense);
-        if (status == CHECK_CONDITION) {
-            scsi_req_build_sense(&r->req, sense);
-        }
+        status = INTERMEDIATE_GOOD;
+        r->req.host_status = io_hdr.host_status;
     } else if (io_hdr.status == CHECK_CONDITION ||
                io_hdr.driver_status & SG_ERR_DRIVER_SENSE) {
         status = CHECK_CONDITION;

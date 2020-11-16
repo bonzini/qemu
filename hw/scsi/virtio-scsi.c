@@ -511,8 +511,45 @@ static void virtio_scsi_command_complete(SCSIRequest *r, size_t resid)
         return;
     }
 
-    req->resp.cmd.response = VIRTIO_SCSI_S_OK;
-    req->resp.cmd.status = r->status;
+    if (r->host_status != SCSI_HOST_OK) {
+        req->resp.cmd.status = GOOD;
+        switch (r->host_status) {
+        case SCSI_HOST_NO_LUN:
+            req->resp.cmd.response = VIRTIO_SCSI_S_INCORRECT_LUN;
+            break;
+        case SCSI_HOST_BUSY:
+            req->resp.cmd.response = VIRTIO_SCSI_S_BUSY;
+            break;
+        case SCSI_HOST_TIME_OUT:
+        case SCSI_HOST_ABORTED:
+            req->resp.cmd.response = VIRTIO_SCSI_S_ABORTED;
+            break;
+        case SCSI_HOST_BAD_RESPONSE:
+            req->resp.cmd.response = VIRTIO_SCSI_S_BAD_TARGET;
+            break;
+        case SCSI_HOST_RESET:
+            req->resp.cmd.response = VIRTIO_SCSI_S_RESET;
+            break;
+        case SCSI_HOST_TRANSPORT_DISRUPTED:
+            req->resp.cmd.response = VIRTIO_SCSI_S_TRANSPORT_FAILURE;
+            break;
+        case SCSI_HOST_TARGET_FAILURE:
+            req->resp.cmd.response = VIRTIO_SCSI_S_TARGET_FAILURE;
+            break;
+        case SCSI_HOST_RESERVATION_ERROR:
+            req->resp.cmd.response = VIRTIO_SCSI_S_NEXUS_FAILURE;
+            break;
+        case SCSI_HOST_ALLOCATION_FAILURE:
+        case SCSI_HOST_MEDIUM_ERROR:
+        case SCSI_HOST_ERROR:
+        default:
+            req->resp.cmd.response = VIRTIO_SCSI_S_FAILURE;
+            break;
+        }
+    } else {
+        req->resp.cmd.response = VIRTIO_SCSI_S_OK;
+        req->resp.cmd.status = r->status;
+    }
     if (req->resp.cmd.status == GOOD) {
         req->resp.cmd.resid = virtio_tswap32(vdev, resid);
     } else {
