@@ -440,8 +440,7 @@ static void scsi_handle_rw_error(SCSIDiskReq *r, int error, bool acct_failed)
         if (acct_failed) {
             block_acct_failed(blk_get_stats(s->qdev.conf.blk), &r->acct);
         }
-        switch (error) {
-        case 0:
+        if (error == 0) {
             /* A passthrough command has run and has produced sense data; check
              * whether the error has to be handled by the guest or should rather
              * pause the host.
@@ -454,41 +453,16 @@ static void scsi_handle_rw_error(SCSIDiskReq *r, int error, bool acct_failed)
                 return true;
             }
             error = scsi_sense_buf_to_errno(r->req.sense, sizeof(r->req.sense));
-            break;
-#ifdef CONFIG_LINUX
-            /* These errno mapping are specific to Linux.  For more information:
-             * - scsi_decide_disposition in drivers/scsi/scsi_error.c
-             * - scsi_result_to_blk_status in drivers/scsi/scsi_lib.c
-             * - blk_errors[] in block/blk-core.c
-             */
-        case EBADE:
-            /* DID_NEXUS_FAILURE -> BLK_STS_NEXUS.  */
-            scsi_req_complete(&r->req, RESERVATION_CONFLICT);
-            break;
-        case ENODATA:
-            /* DID_MEDIUM_ERROR -> BLK_STS_MEDIUM.  */
-            scsi_check_condition(r, SENSE_CODE(READ_ERROR));
-            break;
-        case EREMOTEIO:
-            /* DID_TARGET_FAILURE -> BLK_STS_TARGET.  */
-            scsi_req_complete(&r->req, HARDWARE_ERROR);
-            break;
-#endif
-        case ENOMEDIUM:
-            scsi_check_condition(r, SENSE_CODE(NO_MEDIUM));
-            break;
-        case ENOMEM:
-            scsi_check_condition(r, SENSE_CODE(TARGET_FAILURE));
-            break;
-        case EINVAL:
-            scsi_check_condition(r, SENSE_CODE(INVALID_FIELD));
-            break;
-        case ENOSPC:
-            scsi_check_condition(r, SENSE_CODE(SPACE_ALLOC_FAILED));
-            break;
-        default:
-            scsi_check_condition(r, SENSE_CODE(IO_ERROR));
-            break;
+        } else {
+            SCSISense sense;
+            int status;
+
+            status = scsi_sense_from_errno(error, &sense);
+            if (status == CHECK_CONDITION) {
+                scsi_req_build_sense(&r->req, sense);
+            }
+            scsi_req_complete(&r->req, status);
+            return true;
         }
     }
 
@@ -2708,13 +2682,29 @@ static void scsi_block_sgio_complete(void *opaque, int ret)
 {
     SCSIBlockReq *req = (SCSIBlockReq *)opaque;
     SCSIDiskReq *r = &req->req;
+    sg_io_hdr_t io_hdr = req->io_header;
     SCSISense sense;
+    int status;
 
-    r->req.status = sg_io_sense_from_errno(-ret, &req->io_header, &sense);
-    if (r->req.status == CHECK_CONDITION &&
-        req->io_header.status != CHECK_CONDITION)
+    status = scsi_sense_from_errno(-ret, &sense);
+    if (status == CHECK_CONDITION) {
         scsi_req_build_sense(&r->req, sense);
-
+    } else if (status == GOOD &&
+               io_hdr.host_status != SCSI_HOST_OK) {
+        status = scsi_sense_from_host_status(io_hdr.host_status, &sense);
+        if (status == CHECK_CONDITION) {
+            scsi_req_build_sense(&r->req, sense);
+        }
+    } else if (io_hdr.status == CHECK_CONDITION ||
+               io_hdr.driver_status & SG_ERR_DRIVER_SENSE) {
+        status = CHECK_CONDITION;
+        r->req.sense_len = io_hdr.sb_len_wr;
+    } else if (io_hdr.driver_status & SG_ERR_DRIVER_TIMEOUT) {
+        status = BUSY;
+    } else if (io_hdr.status) {
+        status = io_hdr.status;
+    }
+    r->req.status = status;
     req->cb(req->cb_opaque, ret);
 }
 

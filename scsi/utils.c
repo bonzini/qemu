@@ -580,72 +580,81 @@ const char *scsi_command_name(uint8_t cmd)
     return names[cmd];
 }
 
-#ifdef CONFIG_LINUX
-int sg_io_sense_from_errno(int errno_value, struct sg_io_hdr *io_hdr,
-                           SCSISense *sense)
+int scsi_sense_from_errno(int errno_value, SCSISense *sense)
 {
-    if (errno_value != 0) {
-        switch (errno_value) {
-        case EDOM:
-            return TASK_SET_FULL;
-        case EBADE:
-            return RESERVATION_CONFLICT;
-        case ENODATA:
-            *sense = SENSE_CODE(READ_ERROR);
-            return CHECK_CONDITION;
-        case EREMOTEIO:
-            *sense = SENSE_CODE(LUN_COMM_FAILURE);
-            return CHECK_CONDITION;
-        case ENOMEM:
-            *sense = SENSE_CODE(TARGET_FAILURE);
-            return CHECK_CONDITION;
-        default:
-            *sense = SENSE_CODE(IO_ERROR);
-            return CHECK_CONDITION;
-        }
-    } else {
-        switch (io_hdr->host_status) {
-        case SCSI_HOST_NO_LUN:
-            *sense = SENSE_CODE(LUN_NOT_RESPONDING);
-            return CHECK_CONDITION;
-        case SCSI_HOST_BUSY:
-            return BUSY;
-        case SCSI_HOST_TIME_OUT:
-            *sense = SENSE_CODE(COMMAND_TIMEOUT);
-            return CHECK_CONDITION;
-        case SCSI_HOST_BAD_RESPONSE:
-            *sense = SENSE_CODE(LUN_COMM_FAILURE);
-            return CHECK_CONDITION;
-        case SCSI_HOST_ABORTED:
-            *sense = SENSE_CODE(COMMAND_ABORTED);
-            return CHECK_CONDITION;
-        case SCSI_HOST_RESET:
-            *sense = SENSE_CODE(RESET);
-            return CHECK_CONDITION;
-        case SCSI_HOST_TRANSPORT_DISRUPTED:
-            *sense = SENSE_CODE(I_T_NEXUS_LOSS);
-            return CHECK_CONDITION;
-        case SCSI_HOST_TARGET_FAILURE:
-            *sense = SENSE_CODE(TARGET_FAILURE);
-            return CHECK_CONDITION;
-        case SCSI_HOST_RESERVATION_ERROR:
-            return RESERVATION_CONFLICT;
-        case SCSI_HOST_ALLOCATION_FAILURE:
-            *sense = SENSE_CODE(SPACE_ALLOC_FAILED);
-            return CHECK_CONDITION;
-        case SCSI_HOST_MEDIUM_ERROR:
-            *sense = SENSE_CODE(READ_ERROR);
-            return CHECK_CONDITION;
-        }
-        if (io_hdr->driver_status & SG_ERR_DRIVER_TIMEOUT) {
-            return BUSY;
-        } else if (io_hdr->status) {
-            return io_hdr->status;
-        } else if (io_hdr->driver_status & SG_ERR_DRIVER_SENSE) {
-            return CHECK_CONDITION;
-        } else {
-            return GOOD;
-        }
+    switch (errno_value) {
+    case 0:
+        return GOOD;
+    case EDOM:
+        return TASK_SET_FULL;
+#ifdef CONFIG_LINUX
+        /* These errno mapping are specific to Linux.  For more information:
+         * - scsi_decide_disposition in drivers/scsi/scsi_error.c
+         * - scsi_result_to_blk_status in drivers/scsi/scsi_lib.c
+         * - blk_errors[] in block/blk-core.c
+         */
+    case EBADE:
+        return RESERVATION_CONFLICT;
+    case ENODATA:
+        *sense = SENSE_CODE(READ_ERROR);
+        return CHECK_CONDITION;
+    case EREMOTEIO:
+        *sense = SENSE_CODE(LUN_COMM_FAILURE);
+        return CHECK_CONDITION;
+#endif
+    case ENOMEDIUM:
+        *sense = SENSE_CODE(NO_MEDIUM);
+        return CHECK_CONDITION;
+    case ENOMEM:
+        *sense = SENSE_CODE(TARGET_FAILURE);
+        return CHECK_CONDITION;
+    case EINVAL:
+        *sense = SENSE_CODE(INVALID_FIELD);
+        return CHECK_CONDITION;
+    case ENOSPC:
+        *sense = SENSE_CODE(SPACE_ALLOC_FAILED);
+        return CHECK_CONDITION;
+    default:
+        *sense = SENSE_CODE(IO_ERROR);
+        return CHECK_CONDITION;
     }
 }
-#endif
+
+int scsi_sense_from_host_status(uint8_t host_status,
+                                SCSISense *sense)
+{
+    switch (host_status) {
+    case SCSI_HOST_NO_LUN:
+        *sense = SENSE_CODE(LUN_NOT_RESPONDING);
+        return CHECK_CONDITION;
+    case SCSI_HOST_BUSY:
+        return BUSY;
+    case SCSI_HOST_TIME_OUT:
+        *sense = SENSE_CODE(COMMAND_TIMEOUT);
+        return CHECK_CONDITION;
+    case SCSI_HOST_BAD_RESPONSE:
+        *sense = SENSE_CODE(LUN_COMM_FAILURE);
+        return CHECK_CONDITION;
+    case SCSI_HOST_ABORTED:
+        *sense = SENSE_CODE(COMMAND_ABORTED);
+        return CHECK_CONDITION;
+    case SCSI_HOST_RESET:
+        *sense = SENSE_CODE(RESET);
+        return CHECK_CONDITION;
+    case SCSI_HOST_TRANSPORT_DISRUPTED:
+        *sense = SENSE_CODE(I_T_NEXUS_LOSS);
+        return CHECK_CONDITION;
+    case SCSI_HOST_TARGET_FAILURE:
+        *sense = SENSE_CODE(TARGET_FAILURE);
+        return CHECK_CONDITION;
+    case SCSI_HOST_RESERVATION_ERROR:
+        return RESERVATION_CONFLICT;
+    case SCSI_HOST_ALLOCATION_FAILURE:
+        *sense = SENSE_CODE(SPACE_ALLOC_FAILED);
+        return CHECK_CONDITION;
+    case SCSI_HOST_MEDIUM_ERROR:
+        *sense = SENSE_CODE(READ_ERROR);
+        return CHECK_CONDITION;
+    }
+    return GOOD;
+}

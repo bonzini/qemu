@@ -139,9 +139,9 @@ int scsi_cdb_length(uint8_t *buf);
 #ifdef CONFIG_LINUX
 #define SG_ERR_DRIVER_TIMEOUT  0x06
 #define SG_ERR_DRIVER_SENSE    0x08
-
-int sg_io_sense_from_errno(int errno_value, struct sg_io_hdr *io_hdr,
-                           SCSISense *sense);
 #endif
+
+int scsi_sense_from_errno(int errno_value, SCSISense *sense);
+int scsi_sense_from_host_status(uint8_t host_status, SCSISense *sense);
 
 #endif
