@@ -931,9 +931,9 @@ for opt do
   ;;
   --with-trace-file=*) trace_file="$optarg"
   ;;
-  --with-default-devices) default_devices="true"
+  --with-default-devices | --enable-default-devices) default_devices="true"
   ;;
-  --without-default-devices) default_devices="false"
+  --without-default-devices | --disable-default-devices) default_devices="false"
   ;;
   --enable-gprof) gprof="yes"
   ;;
