@@ -432,7 +432,7 @@ sheepdog="no"
 libxml2=""
 debug_mutex="no"
 libpmem=""
-default_devices="yes"
+default_devices="true"
 plugins="no"
 fuzzing="no"
 rng_none="no"
@@ -929,9 +929,9 @@ for opt do
   ;;
   --with-trace-file=*) trace_file="$optarg"
   ;;
-  --with-default-devices) default_devices="yes"
+  --with-default-devices) default_devices="true"
   ;;
-  --without-default-devices) default_devices="no"
+  --without-default-devices) default_devices="false"
   ;;
   --enable-gprof) gprof="yes"
   ;;
@@ -5551,11 +5551,6 @@ echo "GIT_UPDATE=$git_update" >> $config_host_mak
 
 echo "ARCH=$ARCH" >> $config_host_mak
 
-if test "$default_devices" = "yes" ; then
-  echo "CONFIG_MINIKCONF_MODE=--defconfig" >> $config_host_mak
-else
-  echo "CONFIG_MINIKCONF_MODE=--allnoconfig" >> $config_host_mak
-fi
 if test "$debug_tcg" = "yes" ; then
   echo "CONFIG_DEBUG_TCG=y" >> $config_host_mak
 fi
@@ -6534,6 +6529,7 @@ NINJA=$ninja $meson setup \
         -Dattr=$attr \
         -Ddocs=$docs -Dsphinx_build=$sphinx_build -Dinstall_blobs=$blobs \
         -Dvhost_user_blk_server=$vhost_user_blk_server \
+        -Ddefault_devices=$default_devices \
         $cross_arg \
         "$PWD" "$source_path"
 
