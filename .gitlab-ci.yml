@@ -628,7 +628,7 @@ deploy:
     - ssh $SSH_DEPLOY_DESTINATION "cd /var/www/qemu-project.org && rm -rf old-docs && mv docs old-docs && mv new-docs docs"
   only:
     refs:
-      - master
+      - test-docs-deployment
     variables:
       - $SSH_PRIVATE_KEY_FILE
       - $SSH_DEPLOY_DESTINATION
