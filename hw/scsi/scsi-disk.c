@@ -111,7 +111,7 @@ struct SCSIDiskState {
     uint16_t rotation_rate;
 };
 
-static bool scsi_handle_rw_error(SCSIDiskReq *r, int error, bool acct_failed);
+static void scsi_handle_rw_error(SCSIDiskReq *r, int error, bool acct_failed);
 
 static void scsi_free_request(SCSIRequest *req)
 {
@@ -190,7 +190,8 @@ static bool scsi_disk_req_check_error(SCSIDiskReq *r, int ret, bool acct_failed)
     }
 
     if (ret < 0 || (r->status && *r->status)) {
-        return scsi_handle_rw_error(r, -ret, acct_failed);
+        scsi_handle_rw_error(r, -ret, acct_failed);
+        return true;
     }
 
     return false;
@@ -428,14 +429,7 @@ static void scsi_read_data(SCSIRequest *req)
     }
 }
 
-/*
- * scsi_handle_rw_error has two return values.  False means that the error
- * must be ignored, true means that the error has been processed and the
- * caller should not do anything else for this request.  Note that
- * scsi_handle_rw_error always manages its reference counts, independent
- * of the return value.
- */
-static bool scsi_handle_rw_error(SCSIDiskReq *r, int error, bool acct_failed)
+static void scsi_handle_rw_error(SCSIDiskReq *r, int error, bool acct_failed)
 {
     bool is_read = (r->req.cmd.mode == SCSI_XFER_FROM_DEV);
     SCSIDiskState *s = DO_UPCAST(SCSIDiskState, qdev, r->req.dev);
@@ -502,13 +496,12 @@ static bool scsi_handle_rw_error(SCSIDiskReq *r, int error, bool acct_failed)
     blk_error_action(s->qdev.conf.blk, action, is_read, error);
     if (action == BLOCK_ERROR_ACTION_IGNORE) {
         scsi_req_complete(&r->req, 0);
-        return true;
+        return;
     }
 
     if (action == BLOCK_ERROR_ACTION_STOP) {
         scsi_req_retry(&r->req);
     }
-    return true;
 }
 
 static void scsi_write_complete_noio(SCSIDiskReq *r, int ret)
