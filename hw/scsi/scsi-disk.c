@@ -110,8 +110,6 @@ struct SCSIDiskState {
     uint16_t rotation_rate;
 };
 
-static void scsi_handle_rw_error(SCSIDiskReq *r, int error, bool acct_failed);
-
 static void scsi_free_request(SCSIRequest *req)
 {
     SCSIDiskReq *r = DO_UPCAST(SCSIDiskReq, req, req);
@@ -179,6 +177,73 @@ static void scsi_disk_load_request(QEMUFile *f, SCSIRequest *req)
     }
 
     qemu_iovec_init_external(&r->qiov, &r->iov, 1);
+}
+
+static void scsi_handle_rw_error(SCSIDiskReq *r, int error, bool acct_failed)
+{
+    bool is_read = (r->req.cmd.mode == SCSI_XFER_FROM_DEV);
+    SCSIDiskState *s = DO_UPCAST(SCSIDiskState, qdev, r->req.dev);
+    SCSIDiskClass *sdc = (SCSIDiskClass *) object_get_class(OBJECT(s));
+    SCSISense sense = SENSE_CODE(NO_SENSE);
+    bool req_has_sense = false;
+    BlockErrorAction action;
+    int status;
+
+    if (error == 0) {
+        /* A passthrough command has completed with nonzero status.  */
+        req_has_sense = (status == CHECK_CONDITION);
+        status = r->req.status;
+    } else {
+        status = scsi_sense_from_errno(error, &sense);
+    }
+
+    /*
+     * Check whether the error has to be handled by the guest or should
+     * rather follow the rerror=/werror= settings.
+     */
+    assert(status);
+    assert(!(error == 0 && !req_has_sense));
+    if (status == CHECK_CONDITION) {
+        if (scsi_sense_buf_is_guest_recoverable(r->req.sense, sizeof(r->req.sense))) {
+            /* These errors are always handled by the guest. */
+            goto report;
+        }
+        if (error == 0) {
+            /* Get an errno value for blk_get_error_action.  */
+            error = scsi_sense_buf_to_errno(r->req.sense, sizeof(r->req.sense));
+        }
+    } else {
+        /*
+         * blk_get_error_action does not really care about errors other
+         * than ENOSPC, so in the passthrough case error = 0 is good enough.
+         */
+    }
+
+    switch (blk_get_error_action(s->qdev.conf.blk, is_read, error)) {
+    case BLOCK_ERROR_ACTION_REPORT:
+        if (acct_failed) {
+            block_acct_failed(blk_get_stats(s->qdev.conf.blk), &r->acct);
+        }
+        goto report;
+
+    case BLOCK_ERROR_ACTION_IGNORE:
+        blk_error_action(s->qdev.conf.blk, action, is_read, error);
+        scsi_req_complete(&r->req, 0);
+        return;
+
+    case BLOCK_ERROR_ACTION_STOP:
+        blk_error_action(s->qdev.conf.blk, action, is_read, error);
+        scsi_req_retry(&r->req);
+        return;
+    }
+
+report:
+    if (req_has_sense) {
+        sdc->update_sense(&r->req);
+    } else if (status == CHECK_CONDITION) {
+        scsi_req_build_sense(&r->req, sense);
+    }
+    scsi_req_complete(&r->req, status);
 }
 
 static bool scsi_disk_req_check_error(SCSIDiskReq *r, int ret, bool acct_failed)
@@ -425,55 +490,6 @@ static void scsi_read_data(SCSIRequest *req)
         r->req.aiocb = blk_aio_flush(s->qdev.conf.blk, scsi_do_read_cb, r);
     } else {
         scsi_do_read(r, 0);
-    }
-}
-
-static void scsi_handle_rw_error(SCSIDiskReq *r, int error, bool acct_failed)
-{
-    bool is_read = (r->req.cmd.mode == SCSI_XFER_FROM_DEV);
-    SCSIDiskState *s = DO_UPCAST(SCSIDiskState, qdev, r->req.dev);
-    SCSIDiskClass *sdc = (SCSIDiskClass *) object_get_class(OBJECT(s));
-    BlockErrorAction action = blk_get_error_action(s->qdev.conf.blk,
-                                                   is_read, error);
-
-    if (action == BLOCK_ERROR_ACTION_REPORT) {
-        if (acct_failed) {
-            block_acct_failed(blk_get_stats(s->qdev.conf.blk), &r->acct);
-        }
-        if (error == 0) {
-            /* A passthrough command has run and has produced sense data; check
-             * whether the error has to be handled by the guest or should rather
-             * pause the host.
-             */
-            assert(r->req.status);
-            if (scsi_sense_buf_is_guest_recoverable(r->req.sense, sizeof(r->req.sense))) {
-                /* These errors are handled by guest. */
-                sdc->update_sense(&r->req);
-                scsi_req_complete(&r->req, r->req.status);
-                return true;
-            }
-            error = scsi_sense_buf_to_errno(r->req.sense, sizeof(r->req.sense));
-        } else {
-            SCSISense sense;
-            int status;
-
-            status = scsi_sense_from_errno(error, &sense);
-            if (status == CHECK_CONDITION) {
-                scsi_req_build_sense(&r->req, sense);
-            }
-            scsi_req_complete(&r->req, status);
-            return true;
-        }
-    }
-
-    blk_error_action(s->qdev.conf.blk, action, is_read, error);
-    if (action == BLOCK_ERROR_ACTION_IGNORE) {
-        scsi_req_complete(&r->req, 0);
-        return;
-    }
-
-    if (action == BLOCK_ERROR_ACTION_STOP) {
-        scsi_req_retry(&r->req);
     }
 }
 
