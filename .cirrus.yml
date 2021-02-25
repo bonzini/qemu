@@ -34,6 +34,7 @@ macos_task:
     - gmake check-qapi-schema V=1
     - gmake check-softfloat V=1
     - gmake check-qtest-x86_64 V=1
+    - gmake install DESTDIR=$PWD/destdir
 
 macos_xcode_task:
   osx_instance:
@@ -44,7 +45,7 @@ macos_xcode_task:
   script:
     - mkdir build
     - cd build
-    - ../configure --extra-cflags='-Wno-error=deprecated-declarations' --enable-modules
+    - ../configure --extra-cflags='-Wno-error=deprecated-declarations' --enable-modules --disable-strip
                    --enable-werror --cc=clang || { cat config.log meson-logs/meson-log.txt; exit 1; }
     - gmake -j$(sysctl -n hw.ncpu)
     - gmake check-unit V=1
@@ -52,6 +53,7 @@ macos_xcode_task:
     - gmake check-qapi-schema V=1
     - gmake check-softfloat V=1
     - gmake check-qtest-x86_64 V=1
+    - gmake install DESTDIR=$PWD/destdir
 
 windows_msys2_task:
   timeout_in: 90m
