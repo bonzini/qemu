@@ -38,7 +38,7 @@
 
 #define VHOST_MEMORY_BASELINE_NREGIONS    8
 #define VHOST_USER_F_PROTOCOL_FEATURES 30
-#define VHOST_USER_SLAVE_MAX_FDS     8
+#define VHOST_USER_BACKEND_MAX_FDS     8
 
 /*
  * Set maximum number of RAM slots supported to
@@ -69,12 +69,12 @@ enum VhostUserProtocolFeature {
     VHOST_USER_PROTOCOL_F_RARP = 2,
     VHOST_USER_PROTOCOL_F_REPLY_ACK = 3,
     VHOST_USER_PROTOCOL_F_NET_MTU = 4,
-    VHOST_USER_PROTOCOL_F_SLAVE_REQ = 5,
+    VHOST_USER_PROTOCOL_F_BACKEND_REQ = 5,
     VHOST_USER_PROTOCOL_F_CROSS_ENDIAN = 6,
     VHOST_USER_PROTOCOL_F_CRYPTO_SESSION = 7,
     VHOST_USER_PROTOCOL_F_PAGEFAULT = 8,
     VHOST_USER_PROTOCOL_F_CONFIG = 9,
-    VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD = 10,
+    VHOST_USER_PROTOCOL_F_BACKEND_SEND_FD = 10,
     VHOST_USER_PROTOCOL_F_HOST_NOTIFIER = 11,
     VHOST_USER_PROTOCOL_F_INFLIGHT_SHMFD = 12,
     VHOST_USER_PROTOCOL_F_RESET_DEVICE = 13,
@@ -107,7 +107,7 @@ typedef enum VhostUserRequest {
     VHOST_USER_SET_VRING_ENABLE = 18,
     VHOST_USER_SEND_RARP = 19,
     VHOST_USER_NET_SET_MTU = 20,
-    VHOST_USER_SET_SLAVE_REQ_FD = 21,
+    VHOST_USER_SET_BACKEND_REQ_FD = 21,
     VHOST_USER_IOTLB_MSG = 22,
     VHOST_USER_SET_VRING_ENDIAN = 23,
     VHOST_USER_GET_CONFIG = 24,
@@ -128,13 +128,13 @@ typedef enum VhostUserRequest {
     VHOST_USER_MAX
 } VhostUserRequest;
 
-typedef enum VhostUserSlaveRequest {
-    VHOST_USER_SLAVE_NONE = 0,
-    VHOST_USER_SLAVE_IOTLB_MSG = 1,
-    VHOST_USER_SLAVE_CONFIG_CHANGE_MSG = 2,
-    VHOST_USER_SLAVE_VRING_HOST_NOTIFIER_MSG = 3,
-    VHOST_USER_SLAVE_MAX
-}  VhostUserSlaveRequest;
+typedef enum VhostUserBackendRequest {
+    VHOST_USER_BACKEND_NONE = 0,
+    VHOST_USER_BACKEND_IOTLB_MSG = 1,
+    VHOST_USER_BACKEND_CONFIG_CHANGE_MSG = 2,
+    VHOST_USER_BACKEND_VRING_HOST_NOTIFIER_MSG = 3,
+    VHOST_USER_BACKEND_MAX
+}  VhostUserBackendRequest;
 
 typedef struct VhostUserMemoryRegion {
     uint64_t guest_phys_addr;
@@ -238,8 +238,8 @@ struct vhost_user {
     struct vhost_dev *dev;
     /* Shared between vhost devs of the same virtio device */
     VhostUserState *user;
-    QIOChannel *slave_ioc;
-    GSource *slave_src;
+    QIOChannel *backend_ioc;
+    GSource *backend_src;
     NotifierWithReturn postcopy_notifier;
     struct PostCopyFD  postcopy_fd;
     uint64_t           postcopy_client_bases[VHOST_USER_MAX_RAM_SLOTS];
@@ -345,8 +345,8 @@ end:
     return G_SOURCE_REMOVE;
 }
 
-static gboolean slave_read(QIOChannel *ioc, GIOCondition condition,
-                           gpointer opaque);
+static gboolean backend_read(QIOChannel *ioc, GIOCondition condition,
+                             gpointer opaque);
 
 /*
  * This updates the read handler to use a new event loop context.
@@ -354,24 +354,24 @@ static gboolean slave_read(QIOChannel *ioc, GIOCondition condition,
  * that events detected in the previous context are purged. They will
  * be re-detected and processed in the new context.
  */
-static void slave_update_read_handler(struct vhost_dev *dev,
-                                      GMainContext *ctxt)
+static void backend_update_read_handler(struct vhost_dev *dev,
+                                        GMainContext *ctxt)
 {
     struct vhost_user *u = dev->opaque;
 
-    if (!u->slave_ioc) {
+    if (!u->backend_ioc) {
         return;
     }
 
-    if (u->slave_src) {
-        g_source_destroy(u->slave_src);
-        g_source_unref(u->slave_src);
+    if (u->backend_src) {
+        g_source_destroy(u->backend_src);
+        g_source_unref(u->backend_src);
     }
 
-    u->slave_src = qio_channel_add_watch_source(u->slave_ioc,
-                                                G_IO_IN | G_IO_HUP,
-                                                slave_read, dev, NULL,
-                                                ctxt);
+    u->backend_src = qio_channel_add_watch_source(u->backend_ioc,
+						  G_IO_IN | G_IO_HUP,
+						  backend_read, dev, NULL,
+						  ctxt);
 }
 
 static int vhost_user_read(struct vhost_dev *dev, VhostUserMsg *msg)
@@ -395,7 +395,7 @@ static int vhost_user_read(struct vhost_dev *dev, VhostUserMsg *msg)
      * be prepared for re-entrancy. So we create a new one and switch chr
      * to use it.
      */
-    slave_update_read_handler(dev, ctxt);
+    backend_update_read_handler(dev, ctxt);
     qemu_chr_be_update_read_handlers(chr->chr, ctxt);
     qemu_chr_fe_add_watch(chr, G_IO_IN | G_IO_HUP, vhost_user_read_cb, &data);
 
@@ -407,7 +407,7 @@ static int vhost_user_read(struct vhost_dev *dev, VhostUserMsg *msg)
      * context that have been processed by the nested loop are purged.
      */
     qemu_chr_be_update_read_handlers(chr->chr, prev_ctxt);
-    slave_update_read_handler(dev, NULL);
+    backend_update_read_handler(dev, NULL);
 
     g_main_loop_unref(loop);
     g_main_context_unref(ctxt);
@@ -1405,7 +1405,7 @@ static int vhost_user_reset_device(struct vhost_dev *dev)
     return 0;
 }
 
-static int vhost_user_slave_handle_config_change(struct vhost_dev *dev)
+static int vhost_user_backend_handle_config_change(struct vhost_dev *dev)
 {
     int ret = -1;
 
@@ -1420,9 +1420,9 @@ static int vhost_user_slave_handle_config_change(struct vhost_dev *dev)
     return ret;
 }
 
-static int vhost_user_slave_handle_vring_host_notifier(struct vhost_dev *dev,
-                                                       VhostUserVringArea *area,
-                                                       int fd)
+static int vhost_user_backend_handle_vring_host_notifier(struct vhost_dev *dev,
+                                                         VhostUserVringArea *area,
+                                                         int fd)
 {
     int queue_idx = area->u64 & VHOST_USER_VRING_IDX_MASK;
     size_t page_size = qemu_real_host_page_size;
@@ -1480,17 +1480,17 @@ static int vhost_user_slave_handle_vring_host_notifier(struct vhost_dev *dev,
     return 0;
 }
 
-static void close_slave_channel(struct vhost_user *u)
+static void close_backend_channel(struct vhost_user *u)
 {
-    g_source_destroy(u->slave_src);
-    g_source_unref(u->slave_src);
-    u->slave_src = NULL;
-    object_unref(OBJECT(u->slave_ioc));
-    u->slave_ioc = NULL;
+    g_source_destroy(u->backend_src);
+    g_source_unref(u->backend_src);
+    u->backend_src = NULL;
+    object_unref(OBJECT(u->backend_ioc));
+    u->backend_ioc = NULL;
 }
 
-static gboolean slave_read(QIOChannel *ioc, GIOCondition condition,
-                           gpointer opaque)
+static gboolean backend_read(QIOChannel *ioc, GIOCondition condition,
+                             gpointer opaque)
 {
     struct vhost_dev *dev = opaque;
     struct vhost_user *u = dev->opaque;
@@ -1527,14 +1527,14 @@ static gboolean slave_read(QIOChannel *ioc, GIOCondition condition,
     }
 
     switch (hdr.request) {
-    case VHOST_USER_SLAVE_IOTLB_MSG:
+    case VHOST_USER_BACKEND_IOTLB_MSG:
         ret = vhost_backend_handle_iotlb_msg(dev, &payload.iotlb);
         break;
-    case VHOST_USER_SLAVE_CONFIG_CHANGE_MSG :
-        ret = vhost_user_slave_handle_config_change(dev);
+    case VHOST_USER_BACKEND_CONFIG_CHANGE_MSG :
+        ret = vhost_user_backend_handle_config_change(dev);
         break;
     case VHOST_USER_SLAVE_VRING_HOST_NOTIFIER_MSG:
-        ret = vhost_user_slave_handle_vring_host_notifier(dev, &payload.area,
+        ret = vhost_user_backend_handle_vring_host_notifier(dev, &payload.area,
                                                           fd ? fd[0] : -1);
         break;
     default:
@@ -1570,7 +1570,7 @@ static gboolean slave_read(QIOChannel *ioc, GIOCondition condition,
     goto fdcleanup;
 
 err:
-    close_slave_channel(u);
+    close_backend_channel(u);
     rc = G_SOURCE_REMOVE;
 
 fdcleanup:
@@ -1582,10 +1582,10 @@ fdcleanup:
     return rc;
 }
 
-static int vhost_setup_slave_channel(struct vhost_dev *dev)
+static int vhost_setup_backend_channel(struct vhost_dev *dev)
 {
     VhostUserMsg msg = {
-        .hdr.request = VHOST_USER_SET_SLAVE_REQ_FD,
+        .hdr.request = VHOST_USER_SET_BACKEND_REQ_FD,
         .hdr.flags = VHOST_USER_VERSION,
     };
     struct vhost_user *u = dev->opaque;
@@ -1596,7 +1596,7 @@ static int vhost_setup_slave_channel(struct vhost_dev *dev)
     QIOChannel *ioc;
 
     if (!virtio_has_feature(dev->protocol_features,
-                            VHOST_USER_PROTOCOL_F_SLAVE_REQ)) {
+                            VHOST_USER_PROTOCOL_F_BACKEND_REQ)) {
         return 0;
     }
 
@@ -1610,8 +1610,8 @@ static int vhost_setup_slave_channel(struct vhost_dev *dev)
         error_report_err(local_err);
         return -1;
     }
-    u->slave_ioc = ioc;
-    slave_update_read_handler(dev, NULL);
+    u->backend_ioc = ioc;
+    backend_update_read_handler(dev, NULL);
 
     if (reply_supported) {
         msg.hdr.flags |= VHOST_USER_NEED_REPLY_MASK;
@@ -1629,7 +1629,7 @@ static int vhost_setup_slave_channel(struct vhost_dev *dev)
 out:
     close(sv[1]);
     if (ret) {
-        close_slave_channel(u);
+        close_backend_channel(u);
     }
 
     return ret;
@@ -1912,11 +1912,11 @@ static int vhost_user_backend_init(struct vhost_dev *dev, void *opaque)
 
         if (virtio_has_feature(features, VIRTIO_F_IOMMU_PLATFORM) &&
                 !(virtio_has_feature(dev->protocol_features,
-                    VHOST_USER_PROTOCOL_F_SLAVE_REQ) &&
+                    VHOST_USER_PROTOCOL_F_BACKEND_REQ) &&
                  virtio_has_feature(dev->protocol_features,
                     VHOST_USER_PROTOCOL_F_REPLY_ACK))) {
             error_report("IOMMU support requires reply-ack and "
-                         "slave-req protocol features.");
+                         "backend-req protocol features.");
             return -1;
         }
 
@@ -1951,7 +1951,7 @@ static int vhost_user_backend_init(struct vhost_dev *dev, void *opaque)
     }
 
     if (dev->vq_index == 0) {
-        err = vhost_setup_slave_channel(dev);
+        err = vhost_setup_backend_channel(dev);
         if (err < 0) {
             return err;
         }
@@ -1980,8 +1980,8 @@ static int vhost_user_backend_cleanup(struct vhost_dev *dev)
         close(u->postcopy_fd.fd);
         u->postcopy_fd.handler = NULL;
     }
-    if (u->slave_ioc) {
-        close_slave_channel(u);
+    if (u->backend_ioc) {
+        close_backend_channel(u);
     }
     g_free(u->region_rb);
     u->region_rb = NULL;
@@ -2075,7 +2075,7 @@ static int vhost_user_net_set_mtu(struct vhost_dev *dev, uint16_t mtu)
         return -1;
     }
 
-    /* If reply_ack supported, slave has to ack specified MTU is valid */
+    /* If reply_ack supported, backend has to ack specified MTU is valid */
     if (reply_supported) {
         return process_message_reply(dev, &msg);
     }
